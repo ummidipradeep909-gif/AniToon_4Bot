@@ -71,9 +71,13 @@ func Mute(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil { return reply(b, ctx, "Telegram could not mute that user: "+err.Error()) }
 	if !ok { return reply(b, ctx, "Telegram did not confirm the mute.") }
 
+	var expiresAt *time.Time
+	if duration > 0 { expiry := time.Now().Add(duration); expiresAt = &expiry }
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "mute", reason, expiresAt)
 	result := fmt.Sprintf("Muted user %d", targetID)
 	if duration > 0 { result += " for " + duration.String() } else { result += " permanently" }
 	if reason != "" { result += ". Reason: " + reason } else { result += "." }
+	result += auditWarning(auditErr)
 	return reply(b, ctx, result)
 }
 
@@ -123,7 +127,8 @@ func Unmute(b *gotgbot.Bot, ctx *ext.Context) error {
 	ok, err := b.RestrictChatMember(chatID, targetID, permissions, &gotgbot.RestrictChatMemberOpts{UseIndependentChatPermissions: true})
 	if err != nil { return reply(b, ctx, "Telegram could not unmute that user: "+err.Error()) }
 	if !ok { return reply(b, ctx, "Telegram did not confirm the unmute.") }
-	return reply(b, ctx, fmt.Sprintf("Unmuted user %d.", targetID))
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "unmute", "", nil)
+	return reply(b, ctx, fmt.Sprintf("Unmuted user %d.%s", targetID, auditWarning(auditErr)))
 }
 
 func boolPtr(v bool) *bool { return &v }
