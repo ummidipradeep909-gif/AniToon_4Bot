@@ -32,10 +32,11 @@ func parseMuteTarget(message *gotgbot.Message, args []string) (int64, time.Durat
 	if len(rest) > 0 {
 		first := strings.ToLower(rest[0])
 		if first[0] >= '0' && first[0] <= '9' {
-			duration, err := ParseMuteDuration(first)
-			if err != nil {
-				return 0, 0, "", err
+			parsedDuration, parseErr := ParseMuteDuration(first)
+			if parseErr != nil {
+				return 0, 0, "", parseErr
 			}
+			duration = parsedDuration
 			rest = rest[1:]
 		}
 	}
