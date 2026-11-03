@@ -59,7 +59,7 @@ func Ban(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err = RequireBotRestrictPermission(b, chatID); err != nil { return reply(b, ctx, err.Error()) }
 	targetID, reason, err := resolveTarget(ctx.EffectiveMessage, commandArgs(ctx.EffectiveMessage))
 	if err != nil { return reply(b, ctx, "Usage: /ban (reply to a user) [reason] or /ban <user_id> [reason]. "+err.Error()) }
-	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot ban myself.") }
+	if targetID == b.User.Id { return reply(b, ctx, "I cannot ban myself.") }
 	if err = RequireTargetIsModeratable(b, chatID, targetID); err != nil { return reply(b, ctx, err.Error()) }
 	ok, err := b.BanChatMember(chatID, targetID, &gotgbot.BanChatMemberOpts{RevokeMessages: true})
 	if err != nil { return reply(b, ctx, "Telegram could not ban that user: "+err.Error()) }
@@ -78,7 +78,7 @@ func Unban(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err = RequireBotRestrictPermission(b, chatID); err != nil { return reply(b, ctx, err.Error()) }
 	targetID, _, err := resolveTarget(ctx.EffectiveMessage, commandArgs(ctx.EffectiveMessage))
 	if err != nil { return reply(b, ctx, "Usage: /unban <user_id> (or reply to a user's message). "+err.Error()) }
-	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot unban myself.") }
+	if targetID == b.User.Id { return reply(b, ctx, "I cannot unban myself.") }
 	if member, lookupErr := b.GetChatMember(chatID, targetID, nil); lookupErr == nil {
 		if IsProtectedTarget(member.GetStatus()) {
 			return reply(b, ctx, "I won't change the membership status of a group owner or administrator.")
