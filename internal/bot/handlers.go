@@ -14,9 +14,26 @@ func Start(b *gotgbot.Bot, ctx *ext.Context) error {
 	if b.User != nil && b.User.FirstName != "" {
 		name = b.User.FirstName
 	}
-	_, err := ctx.EffectiveMessage.Reply(b,
-		fmt.Sprintf("<b>Welcome to %s!</b>\nA modular Telegram group-management bot.\n\nUse /help to see available commands.", name),
-		&gotgbot.SendMessageOpts{ParseMode: "HTML"})
+	text := fmt.Sprintf(
+		"<b>Welcome to %s!</b>\nYour all-round Telegram group-management assistant.\n\n"+
+			"Use /help to see available commands.\n\n"+
+			"<b>Want a bot of your own?</b>\n"+
+			"1. Tap <b>Create Your Own Bot</b> below.\n"+
+			"2. Open BotFather and send /newbot.\n"+
+			"3. Follow its steps to choose a bot name and username.\n"+
+			"4. Keep the API token private. Never post it in a group or send it to strangers.\n\n"+
+			"<i>This button opens Telegram's official BotFather. Connecting and hosting a personal AniToon clone will be added as a separate, secure setup flow.</i>",
+		name,
+	)
+	keyboard := gotgbot.InlineKeyboardMarkup{
+		InlineKeyboard: [][]gotgbot.InlineKeyboardButton{
+			{{Text: "🤖 Create Your Own Bot", Url: "https://t.me/BotFather"}},
+		},
+	}
+	_, err := ctx.EffectiveMessage.Reply(b, text, &gotgbot.SendMessageOpts{
+		ParseMode: "HTML",
+		ReplyMarkup: keyboard,
+	})
 	return err
 }
 
