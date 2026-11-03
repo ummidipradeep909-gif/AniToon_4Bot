@@ -40,7 +40,7 @@ func RegisterAntiFloodCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *re
 	d.AddHandler(handlers.NewCommand("flood", func(b *gotgbot.Bot, c *ext.Context) error { return s.showConfig(b,c) }))
 	d.AddHandler(handlers.NewCommand("clearflood", func(b *gotgbot.Bot, c *ext.Context) error { return s.clearConfig(b,c) }))
 	d.AddHandler(handlers.NewMessage(func(m *gotgbot.Message) bool {
-		return m != nil && (m.Chat.Type == gotgbot.ChatTypeGroup || m.Chat.Type == gotgbot.ChatTypeSupergroup) && m.From != nil && !m.From.IsBot() && m.From.Id > 0
+		return m != nil && (m.Chat.Type == gotgbot.ChatTypeGroup || m.Chat.Type == gotgbot.ChatTypeSupergroup) && m.From != nil && !m.From.IsBot && m.From.Id > 0
 	}, s.handleMessage))
 }
 
