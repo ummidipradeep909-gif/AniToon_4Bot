@@ -2,26 +2,33 @@
 
 An independently implemented Telegram group-management bot, designed around a Go Telegram runtime, a Python policy service, PostgreSQL and Redis. The goal is broad Rose-style functionality, delivered in tested stages.
 
-## Implemented
+## Implemented command handlers
 
-- Go long-polling runtime.
 - /start, /help and /id.
-- /ban and /unban with live administrator checks, bot Restrict members permission checks, reply/numeric-ID targeting, protected administrator targets and Telegram API error handling.
+- /ban and /unban with live administrator checks, bot Restrict members permission checks, reply/numeric-ID targeting and protected administrator targets.
+- /mute and /unmute with the same permission gates, protected-target checks, temporary/permanent restrictions and duration validation.
+- Mute durations accept 30s, 15m, 2h, 3d, 1w and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes must be 30 seconds to 366 days.
 - Python FastAPI health endpoint and non-enforcing per-user rate telemetry.
 - PostgreSQL starter schema and Docker Compose infrastructure.
 - GitHub Actions checks for Go tests/vet and Python syntax compilation.
 
-## Moderation command usage
+## Moderation usage
 
-- Reply to a member's message: /ban [reason]
+- Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
 - Remove a ban: /unban 123456789
+- Reply to a member: /mute 2h [reason]
+- Numeric target: /mute 123456789 2h [reason]
+- Permanent mute: /mute 123456789
+- Remove a restriction: /unmute 123456789 (or reply)
 
-Only numeric IDs and reply targets are supported. Usernames are not resolved because the Bot API does not provide a general username-to-user-ID lookup. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must be a group administrator with Restrict members permission.
+Only numeric IDs and reply targets are supported. Usernames are not resolved. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must be an administrator with Restrict members permission.
+
+**Unmute limitation:** Telegram's unrestrict operation requires sending permissive chat permissions. This implementation restores all permissions supported by the current Bot API; it does not yet preserve a member-specific restriction that was applied for another reason. Use /unmute only when you intend to remove that member's restrictions.
 
 ## Important limitations
 
-This is an incremental implementation, not a completed Rose replacement. Mute, kick, warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
+This is an incremental implementation, not a completed Rose replacement. Kick, warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
 
 ## Development
 
@@ -40,7 +47,7 @@ The Go module uses gotgbot v2.0.0-rc.37. GitHub Actions runs Go and Python check
 - Fail closed if the actor's admin state cannot be verified.
 - Verify bot permissions before calling Telegram moderation endpoints.
 - Protect chat creators and administrators from routine moderation.
-- Keep untrusted user-provided reasons as plain text (not HTML).
+- Keep untrusted user-provided reasons as plain text.
 - Use 64-bit Telegram identifiers.
 - Keep policy-service endpoints private or authenticate service-to-service calls.
 
