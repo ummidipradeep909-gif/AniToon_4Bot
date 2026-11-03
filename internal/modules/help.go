@@ -34,6 +34,10 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /allowlink add|remove <domain> — manage trusted domains
 /allowlink list — show trusted domains
 /antiforward [on|off] — block forwarded messages from regular members
+/addblacklist <phrase> — block a word or phrase
+/unblacklist <phrase> — remove a blacklist phrase
+/blacklist — list blocked phrases
+/blacklistmode [delete|warn] — choose the action
 
 /modlog [count] — show recent moderation actions (1–20)
 
