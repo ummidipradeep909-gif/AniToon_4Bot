@@ -77,7 +77,9 @@ func (s *floodService) setConfig(b *gotgbot.Bot, c *ext.Context) error {
 	if err = s.available(); err != nil { return reply(b,c,err.Error()) }
 	cfg, err := parseFloodConfig(commandArgs(c.EffectiveMessage))
 	if err != nil { return reply(b,c,err.Error()) }
-	if cfg.Action != "delete" {
+	if cfg.Action == "delete" {
+		if err = RequireBotDeletePermission(b,chatID); err != nil { return reply(b,c,err.Error()) }
+	} else {
 		if err = RequireBotRestrictPermission(b,chatID); err != nil { return reply(b,c,err.Error()) }
 	}
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second); defer cancel()
@@ -113,7 +115,6 @@ func (s *floodService) clearConfig(b *gotgbot.Bot,c *ext.Context) error {
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second); defer cancel()
 	_,err=s.db.Exec(ctx,`DELETE FROM flood_configs WHERE bot_id=$1 AND chat_id=$2`,b.User.Id,chatID)
 	if err!=nil{return reply(b,c,"I couldn't clear this group's anti-flood settings.")}
-	if s.redis!=nil { _=s.redis.Del(ctx,floodCounterKey(b.User.Id,chatID,0),floodActionKey(b.User.Id,chatID,0)).Err() }
 	return reply(b,c,"Anti-flood has been disabled in this group.")
 }
 
@@ -136,7 +137,7 @@ func (s *floodService) isAdmin(b *gotgbot.Bot,chatID,userID int64) bool {
 	s.mu.RLock(); cached,ok:=s.adminCache[key]; s.mu.RUnlock()
 	if ok && now.Before(cached.expiresAt) { return cached.admin }
 	member,err:=b.GetChatMember(chatID,userID,nil)
-	if err!=nil { return true } // fail open: never auto-punish when exemption cannot be verified
+	if err!=nil || member == nil { return true } // fail open: never auto-punish when exemption cannot be verified
 	admin:=IsChatAdmin(member.GetStatus())
 	s.mu.Lock()
 	if len(s.adminCache)>4096 { s.adminCache=make(map[string]floodAdminCacheEntry) }
@@ -168,9 +169,9 @@ func (s *floodService) handleMessage(b *gotgbot.Bot,c *ext.Context) error {
 		now.Add(-time.Duration(cfg.WindowSeconds)*time.Second).UnixMilli(),now.UnixMilli(),
 		fmt.Sprintf("%d:%d",m.MessageId,now.UnixNano()),cfg.WindowSeconds*1000).Int64()
 	if err!=nil || count<=int64(cfg.Limit) { return nil }
-	// Remove every over-limit message; apply mute/ban at most once per minute.
-	if _,err=b.DeleteMessage(chatID,m.MessageId,nil); err!=nil { return nil }
-	if cfg.Action=="delete" { return nil }
+	// Remove every over-limit message where permitted; apply mute/ban at most once per minute.
+	_, deleteErr := b.DeleteMessage(chatID,m.MessageId,nil)
+	if cfg.Action=="delete" { return deleteErr }
 	claimed,err:=s.redis.SetNX(ctx,floodActionKey(b.User.Id,chatID,userID),"1",time.Minute).Result()
 	if err!=nil || !claimed { return nil }
 	switch cfg.Action {
