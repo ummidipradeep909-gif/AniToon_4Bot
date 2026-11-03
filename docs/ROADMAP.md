@@ -24,7 +24,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Kick using Telegram ban-then-unban sequence with failure recovery and PostgreSQL audit records
 - [x] PostgreSQL-backed warning history, listing, reset and audit records (three-warning admin review notice; no automatic punishment)
 - [x] /del and /purge with verified admin and bot delete-permission checks, a 100-message limit and partial-failure reporting
-- [ ] Slow mode
+- [x] Per-bot/per-group Redis-backed slow mode with admin/command exemptions and excess-message deletion (not Telegram native slow mode)
 - [x] PostgreSQL moderation audit log with per-bot/per-group `/modlog` (log-channel delivery not included)
 
 ## Group protection
