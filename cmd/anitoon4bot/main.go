@@ -9,6 +9,7 @@ import (
  "github.com/PaulSonOfLars/gotgbot/v2"
  "github.com/PaulSonOfLars/gotgbot/v2/ext"
  "github.com/jackc/pgx/v5/pgxpool"
+ "github.com/redis/go-redis/v9"
 
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
@@ -22,6 +23,23 @@ func main() {
  logger:=slog.New(slog.NewTextHandler(os.Stdout,&slog.HandlerOptions{Level:slog.LevelInfo}))
  b,err:=gotgbot.NewBot(cfg.BotToken,nil)
  if err!=nil { logger.Error("could not initialise Telegram bot","error",err); os.Exit(1) }
+
+ var db *pgxpool.Pool
+ var redisClient *redis.Client
+ redisURL:=os.Getenv("REDIS_URL")
+ if redisURL!="" {
+  redisOpts,parseErr:=redis.ParseURL(redisURL)
+  if parseErr==nil {
+   redisClient=redis.NewClient(redisOpts)
+   pingCtx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
+   err=redisClient.Ping(pingCtx).Err()
+   cancel()
+  } else { err=parseErr }
+  if err!=nil {
+   logger.Error("Redis unavailable; anti-flood commands and detection will be disabled","error",err)
+   if redisClient!=nil { _=redisClient.Close(); redisClient=nil }
+  } else { logger.Info("Redis connected"); defer redisClient.Close() }
+ } else { logger.Warn("REDIS_URL is empty; anti-flood detection will be disabled") }
 
  var db *pgxpool.Pool
  databaseURL:=os.Getenv("DATABASE_URL")
@@ -55,6 +73,7 @@ func main() {
  moderation.RegisterWarningCommands(dispatcher,db)
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
+ moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
