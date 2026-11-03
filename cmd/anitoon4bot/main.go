@@ -77,6 +77,7 @@ func main() {
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db)
+ moderation.RegisterForwardProtectionCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
