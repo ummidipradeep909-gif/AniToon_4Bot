@@ -68,8 +68,14 @@ func (m *Manager) ReceiveToken(b *gotgbot.Bot,c *ext.Context) error {
  connected:=m.owners[owner]!=0
  m.mu.Unlock()
  if !waiting { return nil }
- // Delete the message before token validation. Never echo or log its contents.
- _,_=b.DeleteMessage(c.EffectiveChat.Id,msg.MessageId,nil)
+ // Delete the message before token validation. Fail closed if Telegram
+ // cannot confirm deletion; never process a credential left in chat history.
+ deleted,deleteErr:=b.DeleteMessage(c.EffectiveChat.Id,msg.MessageId,nil)
+ if deleteErr!=nil || !deleted {
+  m.mu.Lock(); delete(m.pending,owner); m.mu.Unlock()
+  _,e:=b.SendMessage(c.EffectiveChat.Id,"I couldn't confirm deletion of that message, so I did not process the token. Revoke it with @BotFather before trying again.",nil)
+  return e
+ }
  token:=strings.TrimSpace(msg.Text)
  if connected { _,e:=b.SendMessage(c.EffectiveChat.Id,"You already have a clone connected.",nil); return e }
  if strings.ContainsAny(token," \t\r\n") || !strings.Contains(token,":") || len(token)<20 || len(token)>256 {
