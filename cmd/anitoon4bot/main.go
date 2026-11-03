@@ -34,6 +34,8 @@ func main() {
 	dispatcher.AddHandler(handlers.NewCommand("id", bot.ID))
 	dispatcher.AddHandler(handlers.NewCommand("ban", moderation.Ban))
 	dispatcher.AddHandler(handlers.NewCommand("unban", moderation.Unban))
+	dispatcher.AddHandler(handlers.NewCommand("mute", moderation.Mute))
+	dispatcher.AddHandler(handlers.NewCommand("unmute", moderation.Unmute))
 	logger.Info("AniToon_4Bot starting", "username", b.User.Username)
 	if err := updater.StartPolling(b, &ext.PollingOpts{
 		DropPendingUpdates: false,
