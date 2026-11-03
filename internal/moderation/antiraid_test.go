@@ -43,3 +43,11 @@ func TestRaidKeysAreScopedToBotAndChat(t *testing.T) {
 	if raidAlertKey(1,2)==raidAlertKey(1,3) { t.Fatal("alert cooldown must be isolated by chat") }
 	if raidQuarantineKey(1,2,3)==raidQuarantineKey(1,2,4) { t.Fatal("quarantine markers must be isolated by member") }
 }
+
+func TestRaidQuarantinePermissionsExplicitlyDenyAllMemberActions(t *testing.T) {
+	for key,value := range raidQuarantinePermissions() {
+		allowed,ok:=value.(bool)
+		if !ok || allowed { t.Fatalf("quarantine permission %s must be explicitly false",key) }
+	}
+	if len(raidQuarantinePermissions()) < 10 { t.Fatal("quarantine payload is missing Telegram permission fields") }
+}
