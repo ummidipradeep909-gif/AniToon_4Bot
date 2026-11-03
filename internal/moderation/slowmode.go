@@ -91,6 +91,7 @@ func (s *slowModeService) configure(b *gotgbot.Bot, c *ext.Context) error {
 		err = s.db.QueryRow(ctx, `SELECT interval_seconds FROM slowmode_configs WHERE bot_id=$1 AND chat_id=$2`, b.User.Id, chatID).Scan(&seconds)
 		if err == pgx.ErrNoRows { return reply(b, c, "Slow mode is disabled. Use /slowmode 10 to allow one message every 10 seconds.") }
 		if err != nil { return reply(b, c, "I couldn't read this group's slow-mode settings.") }
+		if s.redis == nil { return reply(b, c, fmt.Sprintf("Slow mode is configured for %d seconds, but Redis is unavailable so enforcement is currently inactive.", seconds)) }
 		return reply(b, c, fmt.Sprintf("🐢 Slow mode is enabled: one message per member every %d seconds. Use /slowmode off to disable it.", seconds))
 	}
 
