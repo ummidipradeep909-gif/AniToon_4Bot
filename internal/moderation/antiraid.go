@@ -211,7 +211,7 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 		if claimErr != nil || !claimed { continue }
 		restrictParams := map[string]any{
 			"chat_id": chatID, "user_id": userID,
-			"permissions": raidQuarantinePermissions(),,
+			"permissions": raidQuarantinePermissions(),
 			"use_independent_chat_permissions": true,
 			"until_date": now.Add(time.Duration(cfg.QuarantineMinutes)*time.Minute).Unix(),
 		}
