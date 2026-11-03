@@ -24,7 +24,6 @@ func main() {
  b,err:=gotgbot.NewBot(cfg.BotToken,nil)
  if err!=nil { logger.Error("could not initialise Telegram bot","error",err); os.Exit(1) }
 
- var db *pgxpool.Pool
  var redisClient *redis.Client
  redisURL:=os.Getenv("REDIS_URL")
  if redisURL!="" {
