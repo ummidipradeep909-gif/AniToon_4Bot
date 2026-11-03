@@ -49,7 +49,7 @@ func RequireBotRestrictPermission(b *gotgbot.Bot, chatID int64) error {
 	if member.GetStatus() != StatusAdmin {
 		return fmt.Errorf("I must be an administrator in this group")
 	}
-	admin, ok := member.(*gotgbot.ChatMemberAdministrator)
+	admin, ok := member.(gotgbot.ChatMemberAdministrator)
 	if !ok || !admin.CanRestrictMembers {
 		return fmt.Errorf("I need the 'Restrict members' permission to do that")
 	}
