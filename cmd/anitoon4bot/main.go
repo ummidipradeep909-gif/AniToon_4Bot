@@ -73,6 +73,7 @@ func main() {
  moderation.RegisterAuditCommands(dispatcher,db)
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
+ moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
