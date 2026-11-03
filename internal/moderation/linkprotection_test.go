@@ -74,7 +74,7 @@ func TestDomainAllowlistMatchesExactAndSubdomains(t *testing.T) {
 func TestExtractMessageLinksIncludesHiddenTextLinksAndCaptions(t *testing.T) {
 	msg := &gotgbot.Message{
 		Text: "See example.com",
-		Entities: []gotgbot.MessageEntity{{Type: "text_link", URL: "https://hidden.example/path"}},
+		Entities: []gotgbot.MessageEntity{{Type: "text_link", Url: "https://hidden.example/path"}},
 		Caption: "https://caption.example",
 	}
 	got := extractMessageLinks(msg)
