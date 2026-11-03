@@ -6,6 +6,7 @@ An independently implemented Telegram group-management bot, designed around a Go
 
 - /start, /help and /id.
 - /ban and /unban with live administrator checks, bot Restrict members permission checks, reply/numeric-ID targeting and protected administrator targets.
+- /kick removes a member using Telegram's supported ban-then-unban sequence. If the second API call fails, the bot explicitly reports that the member may remain banned and gives the recovery command.
 - /mute and /unmute with the same permission gates, protected-target checks, temporary/permanent restrictions and duration validation.
 - Mute durations accept 30s, 15m, 2h, 3d, 1w and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes must be 30 seconds to 366 days.
 - Python FastAPI health endpoint and non-enforcing per-user rate telemetry.
@@ -17,6 +18,8 @@ An independently implemented Telegram group-management bot, designed around a Go
 - Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
 - Remove a ban: /unban 123456789
+- Reply to a member: /kick [reason]
+- Numeric target: /kick 123456789 [reason]
 - Reply to a member: /mute 2h [reason]
 - Numeric target: /mute 123456789 2h [reason]
 - Permanent mute: /mute 123456789
@@ -24,11 +27,13 @@ An independently implemented Telegram group-management bot, designed around a Go
 
 Only numeric IDs and reply targets are supported. Usernames are not resolved. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must be an administrator with Restrict members permission.
 
+**Kick behaviour:** Telegram does not provide a separate kick method. The bot bans and immediately unbans the target. If the unban API call fails, the member remains banned; the bot reports this explicitly so an administrator can use /unban.
+
 **Unmute limitation:** Telegram's unrestrict operation requires sending permissive chat permissions. This implementation restores all permissions supported by the current Bot API; it does not yet preserve a member-specific restriction that was applied for another reason. Use /unmute only when you intend to remove that member's restrictions.
 
 ## Important limitations
 
-This is an incremental implementation, not a completed Rose replacement. Kick, warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
+This is an incremental implementation, not a completed Rose replacement. Warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
 
 ## Development
 
