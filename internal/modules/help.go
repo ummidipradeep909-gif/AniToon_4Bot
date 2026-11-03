@@ -33,6 +33,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /antilink [on|off] — block unapproved links and Telegram invites
 /allowlink add|remove <domain> — manage trusted domains
 /allowlink list — show trusted domains
+/antiforward [on|off] — block forwarded messages from regular members
 
 /modlog [count] — show recent moderation actions (1–20)
 
