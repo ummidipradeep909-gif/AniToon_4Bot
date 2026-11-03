@@ -10,6 +10,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
 - /mute and /unmute with temporary/permanent restrictions and duration validation.
 - /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
+- /del to delete the replied-to message, and /purge to delete a replied-to range through the command or the latest 1–100 message IDs. Both require a verified group admin and the bot's explicit Delete messages permission; partial failures are counted and reported.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -31,6 +32,14 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - The clone's existing webhook must be removed before connection. If another host is polling the bot, stop it first.
 - This is an initial single-process clone runner, not a production multi-tenant hosting platform. Encrypted persistent token storage, per-owner quotas, clone lifecycle controls, and isolation/rate limits are not implemented yet.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
+
+## Purge and delete commands
+
+- Reply to a message with /del to delete only that message.
+- Reply to the first message with /purge to delete that message through the /purge command (inclusive).
+- Use /purge 20 to delete the latest 20 message IDs, including the /purge command.
+- A single purge is limited to 100 message IDs. Telegram may refuse messages older than 48 hours or otherwise non-deletable messages; the bot reports successful and failed deletion counts separately.
+- Both commands require the invoking user to be a verified group administrator and the bot to be an administrator with Telegram's **Delete messages** permission.
 
 ## Warning commands
 
@@ -61,7 +70,7 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Purge, locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
