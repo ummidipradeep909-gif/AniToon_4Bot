@@ -12,6 +12,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
 - /del to delete the replied-to message, and /purge to delete a replied-to range through the command or the latest 1–100 message IDs. Both require a verified group admin and the bot's explicit Delete messages permission; partial failures are counted and reported.
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
+- /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -22,7 +23,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock and /locks handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood and /clearflood handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -53,6 +54,17 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 
 These commands change group default permissions for regular members; they do not override administrators or existing member-specific permission exceptions.
 
+## Anti-flood protection
+
+- Enable with `/setflood 5 10 delete`: more than five messages from one member within ten seconds triggers deletion of the over-limit messages.
+- Choose `mute` or `ban` instead of `delete` to apply a 10-minute mute or a ban when the threshold is crossed. These actions require the bot's Restrict members permission; deletion mode requires Delete messages.
+- `/flood` displays this bot's settings for the current group. `/clearflood` disables them.
+- Limits are 2–50 messages and windows are 3–300 seconds. Admins are exempt. Each clone bot has its own settings, isolated by bot ID and group ID.
+- Redis sorted sets perform atomic sliding-window counting with automatic expiry; PostgreSQL stores the configuration. If either service is unavailable, detection fails open rather than punishing members without a verified configuration.
+- The moderation action is applied at most once per user per minute. Mute duration is currently fixed at 10 minutes.
+
+Apply `migrations/003_antiflood.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
 ## Warning commands
 
 - Reply to a member: /warn [reason]
@@ -82,14 +94,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Slow mode, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
-1. Copy .env.example to .env and set BOT_TOKEN and DATABASE_URL (PostgreSQL is required for warning commands).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. Apply migrations/002_chat_permission_locks.sql after it to enable persistent group locks.
+1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL and REDIS_URL (PostgreSQL and Redis are required for anti-flood; PostgreSQL is also required for warnings and locks).
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql and migrations/003_antiflood.sql in order to enable group locks and anti-flood.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
