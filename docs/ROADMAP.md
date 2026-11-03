@@ -14,7 +14,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Reply/ID target resolver and protected-target checks
 - [x] Ban and unban command handlers (audit persistence and integration tests remain required)
 - [x] Mute and unmute command handlers (audit persistence and chat-default permission preservation remain required)
-- [ ] Kick
+- [x] Kick using Telegram ban-then-unban sequence (failure recovery is reported; audit persistence remains required)
 - [ ] Warning history, thresholds and reset
 - [ ] Purge and message deletion
 - [ ] Slow mode
