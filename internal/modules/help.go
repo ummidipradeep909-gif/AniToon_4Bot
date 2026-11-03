@@ -23,6 +23,9 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /lock [type] — lock a permission category (defaults to all)
 /unlock [type] — restore a category or all original permissions
 /locks — list active group locks
+/setflood <limit> <seconds> [delete|mute|ban] — configure anti-flood
+/flood — show anti-flood settings
+/clearflood — disable anti-flood
 
 <b>Coming next</b>
 /slowmode
