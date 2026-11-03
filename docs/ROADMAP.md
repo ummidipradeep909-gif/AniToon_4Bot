@@ -22,7 +22,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Ban and unban command handlers (audit persistence and integration tests remain required)
 - [x] Mute and unmute command handlers (audit persistence and chat-default permission preservation remain required)
 - [x] Kick using Telegram ban-then-unban sequence (failure recovery is reported; audit persistence remains required)
-- [ ] Warning history, thresholds and reset
+- [x] PostgreSQL-backed warning history, listing and reset (three-warning admin review notice; no automatic punishment)
 - [ ] Purge and message deletion
 - [ ] Slow mode
 - [ ] Moderation audit log and log-channel integration
