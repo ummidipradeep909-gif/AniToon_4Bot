@@ -1,19 +1,37 @@
 # AniToon_4Bot
 
-An independently implemented Telegram group-management bot, designed around a Go Telegram runtime, a Python policy service, PostgreSQL and Redis. The goal is broad Rose-style functionality, delivered in tested stages.
+A Telegram group-management bot with a Go runtime, Python policy-service foundation, PostgreSQL and Redis. Features are being added incrementally; this is not yet a complete Rose Bot replacement.
 
-## Implemented command handlers
+## Implemented commands
 
 - /start, /help and /id.
-- /ban and /unban with live administrator checks, bot Restrict members permission checks, reply/numeric-ID targeting and protected administrator targets.
-- /kick removes a member using Telegram's supported ban-then-unban sequence. If the second API call fails, the bot explicitly reports that the member may remain banned and gives the recovery command.
-- /mute and /unmute with the same permission gates, protected-target checks, temporary/permanent restrictions and duration validation.
-- Mute durations accept 30s, 15m, 2h, 3d, 1w and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes must be 30 seconds to 366 days.
-- Python FastAPI health endpoint and non-enforcing per-user rate telemetry.
-- PostgreSQL starter schema and Docker Compose infrastructure.
-- GitHub Actions checks for Go tests/vet and Python syntax compilation.
+- /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather.
+- /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
+- /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
+- /mute and /unmute with temporary/permanent restrictions and duration validation.
+- Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
-## Create your own bot button\n\nThe /start message includes a **Create Your Own Bot** inline button that opens Telegram's official [@BotFather](https://t.me/BotFather). Users can create a new Telegram bot there with /newbot. The button is an onboarding shortcut only: personal AniToon clone provisioning, secure token intake/encryption, and multi-instance hosting are not implemented yet. Never send a bot token to an untrusted person or paste it into a public chat.\n\n## Moderation usage
+## Create your own clone bot
+
+The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the official [@BotFather](https://t.me/BotFather).
+
+1. Tap the button and send /newbot to BotFather.
+2. Complete BotFather's setup and copy the new bot's API token.
+3. Return to the **main AniToon_4Bot private chat** and send /clone.
+4. Send the BotFather token as the next private message.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute and /unmute handlers.
+
+Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
+
+### Clone hosting and credential limitations
+
+- Tokens are held in process memory by the live bot client. They are not stored in PostgreSQL and are never written to logs or echoed in replies.
+- Clone connections are lost when the service restarts; the owner must run /clone again to reconnect.
+- The clone's existing webhook must be removed before connection. If another host is polling the bot, stop it first.
+- This is an initial single-process clone runner, not a production multi-tenant hosting platform. Encrypted persistent token storage, per-owner quotas, clone lifecycle controls, and isolation/rate limits are not implemented yet.
+- The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
+
+## Moderation usage
 
 - Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
@@ -25,15 +43,15 @@ An independently implemented Telegram group-management bot, designed around a Go
 - Permanent mute: /mute 123456789
 - Remove a restriction: /unmute 123456789 (or reply)
 
-Only numeric IDs and reply targets are supported. Usernames are not resolved. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must be an administrator with Restrict members permission.
+Only numeric IDs and reply targets are supported. Usernames are not resolved. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must have the relevant administrator permissions.
 
-**Kick behaviour:** Telegram does not provide a separate kick method. The bot bans and immediately unbans the target. If the unban API call fails, the member remains banned; the bot reports this explicitly so an administrator can use /unban.
+**Kick behaviour:** Telegram does not provide a separate kick method. The bot bans and immediately unbans the target. If the unban API call fails, the member remains banned; the bot reports this so an administrator can use /unban.
 
-**Unmute limitation:** Telegram's unrestrict operation requires sending permissive chat permissions. This implementation restores all permissions supported by the current Bot API; it does not yet preserve a member-specific restriction that was applied for another reason. Use /unmute only when you intend to remove that member's restrictions.
+**Unmute limitation:** /unmute restores all permissions supported by the current Bot API. It does not preserve a member-specific restriction that was applied for another reason. Use it only when you intend to remove that member's restrictions.
 
-## Important limitations
+## Not implemented yet
 
-This is an incremental implementation, not a completed Rose replacement. Warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
+Warnings, purge, locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
@@ -49,11 +67,11 @@ The Go module uses gotgbot v2.0.0-rc.37. GitHub Actions runs Go and Python check
 ## Security
 
 - Never commit bot tokens or credentials.
-- Fail closed if the actor's admin state cannot be verified.
-- Verify bot permissions before calling Telegram moderation endpoints.
-- Protect chat creators and administrators from routine moderation.
+- Clone token messages are deleted before validation; token strings are never logged or echoed.
+- Fail closed if administrator or bot permissions cannot be verified.
+- Protect group creators and administrators from routine moderation.
 - Keep untrusted user-provided reasons as plain text.
 - Use 64-bit Telegram identifiers.
 - Keep policy-service endpoints private or authenticate service-to-service calls.
 
-See docs/ROADMAP.md for the staged feature inventory and docs/architecture/DECISIONS.md for security boundaries.
+See docs/ROADMAP.md and docs/architecture/DECISIONS.md for implementation status and security boundaries.
