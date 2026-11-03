@@ -7,6 +7,10 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /help — command guide
 /id — show chat and user IDs
 
+<b>Clone setup (main bot private chat)</b>
+/clone — connect your own BotFather bot token
+/cancel — cancel clone setup
+
 <b>Available moderation</b>
 /ban — ban a member (reply or numeric user ID)
 /unban — remove a ban (numeric user ID)
@@ -19,4 +23,4 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /purge, /lock, /unlock, /slowmode
 /rules, /filter, /note, /welcome, /report
 
-Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
+Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
