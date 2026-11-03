@@ -176,16 +176,17 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 	}
 	if s.db == nil || s.redis == nil { return nil }
 	user := cm.NewChatMember.GetUser()
-	if user.Id <= 0 || user.IsBot || cm.From.IsBot || cm.From.Id <= 0 { return nil }
+	if user.Id <= 0 || user.IsBot { return nil }
 	chatID,botID := cm.Chat.Id,b.User.Id
-	// Joins performed by a verified administrator are deliberate invitations,
-	// not a raid signal. If the inviter cannot be verified, fail open.
-	inviter,inviterErr := b.GetChatMember(chatID,cm.From.Id,nil)
-	if inviterErr != nil || inviter == nil || IsChatAdmin(inviter.GetStatus()) { return nil }
 	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
 	defer cancel()
 	cfg,err := s.getConfig(ctx,botID,chatID)
 	if err == pgx.ErrNoRows || err != nil { return nil }
+	if cm.From.IsBot || cm.From.Id <= 0 { return nil }
+	// Joins performed by a verified administrator are deliberate invitations,
+	// not a raid signal. If the inviter cannot be verified, fail open.
+	inviter,inviterErr := b.GetChatMember(chatID,cm.From.Id,nil)
+	if inviterErr != nil || inviter == nil || IsChatAdmin(inviter.GetStatus()) { return nil }
 	now := time.Now()
 	key := raidCounterKey(botID,chatID)
 	count,err := raidWindowScript.Run(ctx,s.redis,[]string{key},
