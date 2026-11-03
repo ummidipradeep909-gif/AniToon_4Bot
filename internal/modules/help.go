@@ -29,6 +29,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /setraid <joins> <seconds> [minutes] — configure anti-raid
 /raid — show anti-raid settings
 /clearraid — disable anti-raid
+/slowmode [seconds|off] — set or disable member message interval
 
 /modlog [count] — show recent moderation actions (1–20)
 
