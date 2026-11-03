@@ -11,16 +11,18 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /clone — connect your own BotFather bot token
 /cancel — cancel clone setup
 
-<b>Available moderation</b>
+<b>Moderation</b>
 /ban — ban a member (reply or numeric user ID)
 /unban — remove a ban (numeric user ID)
 /kick — remove a member (they may rejoin)
 /mute — mute permanently or for a duration
 /unmute — restore Telegram chat permissions
+/warn — add a warning (reply or numeric user ID)
+/warnings — view warning history for a member
+/resetwarn — clear a member's warnings
 
 <b>Coming next</b>
-/warn, /warnings, /resetwarn
 /purge, /lock, /unlock, /slowmode
 /rules, /filter, /note, /welcome, /report
 
-Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
+Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
