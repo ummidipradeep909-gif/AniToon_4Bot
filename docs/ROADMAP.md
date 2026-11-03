@@ -25,12 +25,12 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] PostgreSQL-backed warning history, listing and reset (three-warning admin review notice; no automatic punishment)
 - [x] /del and /purge with verified admin and bot delete-permission checks, a 100-message limit and partial-failure reporting
 - [ ] Slow mode
-- [ ] Moderation audit log and log-channel integration
+- [x] PostgreSQL moderation audit log with per-bot/per-group `/modlog` (log-channel delivery not included)
 
 ## Group protection
 - [x] Per-chat permission locks and unlocks with persisted original permission snapshots, category-level controls and serialized updates
 - [x] Redis-backed per-bot/per-chat anti-flood with admin exemptions, sliding windows and configurable delete/mute/ban actions (integration/load tests remain required)
-- [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (join/CAPTCHA integration tests remain required)
+- [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (Telegram join integration tests remain required)
 - [ ] CAPTCHA / join verification
 - [ ] URL, invite, forward and media policies
 - [ ] Blacklists and keyword rules
