@@ -3,7 +3,6 @@ package moderation
 import (
 	"fmt"
 	"strconv"
-	"strings"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -151,5 +150,3 @@ func PurgeMessages(b *gotgbot.Bot, ctx *ext.Context) error {
 	return err
 }
 
-// Keep strings imported in this file for the user-facing command help text.
-var _ = strings.TrimSpace
