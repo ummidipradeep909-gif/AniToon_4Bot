@@ -18,6 +18,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
 - /antilink on|off enables per-bot, per-group link protection. Non-admin messages containing unapproved external links or Telegram invite links are deleted; admins are exempt.
 - /allowlink add <domain>, /allowlink remove <domain> and /allowlink list manage the group's trusted domains. Exact domains and their subdomains are allowed; Telegram invite links remain blocked.
+- /antiforward on|off enables per-bot, per-group forwarded-message protection. Forwarded messages from regular members are deleted; verified administrators are exempt. The bot fails open if it cannot verify the sender's admin status.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -28,7 +29,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink and /allowlink handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink, /allowlink and /antiforward handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -109,7 +110,17 @@ Apply `migrations/006_slowmode.sql` to existing databases. New Docker-managed da
 - Domain matching includes subdomains. Admins and bots are exempt. The bot needs Delete messages and PostgreSQL.
 - If settings or allowlist storage cannot be verified, the handler fails open and does not delete messages.
 
-Apply `migrations/007_link_protection.sql` to existing databases. New Docker-managed databases run it during initialisation.
+Apply `migrations/007_link_protection.sql and migrations/008_forward_protection.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
+## Forward protection
+
+- `/antiforward on` enables protection; `/antiforward off` disables it; `/antiforward` shows the current setting.
+- Forwarded messages from regular members are deleted. Verified group administrators and bots are exempt.
+- Detection uses Telegram's `forward_origin` field, including user, hidden-user, chat and channel origins.
+- Settings are isolated by bot ID and group ID in PostgreSQL. The bot needs **Delete messages** permission.
+- If the policy cannot be read or the sender's administrator status cannot be verified, the bot fails open and leaves the message untouched.
+
+Apply `migrations/008_forward_protection.sql` to existing databases. New Docker-managed databases run it during initialisation.
 
 ## Warning commands
 
