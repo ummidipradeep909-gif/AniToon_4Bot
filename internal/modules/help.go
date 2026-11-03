@@ -20,9 +20,12 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /warn — add a warning (reply or numeric user ID)
 /warnings — view warning history for a member
 /resetwarn — clear a member's warnings
+/lock [type] — lock a permission category (defaults to all)
+/unlock [type] — restore a category or all original permissions
+/locks — list active group locks
 
 <b>Coming next</b>
-/purge, /lock, /unlock, /slowmode
+/slowmode
 /rules, /filter, /note, /welcome, /report
 
 Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
