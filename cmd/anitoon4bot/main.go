@@ -54,6 +54,7 @@ func main() {
  clones.RegisterCommands(dispatcher)
  moderation.RegisterWarningCommands(dispatcher,db)
  moderation.RegisterPurgeCommands(dispatcher)
+ moderation.RegisterLockCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
