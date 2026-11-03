@@ -39,7 +39,7 @@ func RequireActorAdmin(b *gotgbot.Bot, chatID, actorID int64) error {
 // RequireBotRestrictPermission verifies that the bot is an administrator with
 // the explicit can_restrict_members privilege required by ban/unban actions.
 func RequireBotRestrictPermission(b *gotgbot.Bot, chatID int64) error {
-	if b.User == nil {
+	if b.User.Id == 0 {
 		return fmt.Errorf("bot identity is unavailable")
 	}
 	member, err := b.GetChatMember(chatID, b.User.Id, nil)
