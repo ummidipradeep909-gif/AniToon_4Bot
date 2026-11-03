@@ -8,7 +8,8 @@ import (
  "github.com/PaulSonOfLars/gotgbot/v2"
  "github.com/PaulSonOfLars/gotgbot/v2/ext"
 
- "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"\n "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/config"
 )
 
@@ -24,7 +25,8 @@ func main() {
   },
   MaxRoutines:ext.DefaultMaxRoutines,Logger:logger,
  })
- updater:=ext.NewUpdater(dispatcher,&ext.UpdaterOpts{Logger:logger})\n bot.SetPrimaryBotID(b.User.Id)
+ updater:=ext.NewUpdater(dispatcher,&ext.UpdaterOpts{Logger:logger})
+ bot.SetPrimaryBotID(b.User.Id)
  clones.RegisterCommands(dispatcher)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
