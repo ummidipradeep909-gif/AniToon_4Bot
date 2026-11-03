@@ -31,7 +31,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Per-chat permission locks and unlocks with persisted original permission snapshots, category-level controls and serialized updates
 - [x] Redis-backed per-bot/per-chat anti-flood with admin exemptions, sliding windows and configurable delete/mute/ban actions (integration/load tests remain required)
 - [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (Telegram join integration tests remain required)
-- [ ] URL, invite, forward and media policies
+- [x] URL and Telegram invite protection with per-bot/per-group trusted-domain allowlist (forward and media policies remain separate)
 - [ ] Blacklists and keyword rules
 
 ## Community
