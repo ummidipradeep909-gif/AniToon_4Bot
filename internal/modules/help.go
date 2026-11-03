@@ -10,11 +10,12 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 <b>Available moderation</b>
 /ban — ban a member (reply or numeric user ID)
 /unban — remove a ban (numeric user ID)
+/kick — remove a member (they may rejoin)
 /mute — mute permanently or for a duration
 /unmute — restore Telegram chat permissions
 
 <b>Coming next</b>
-/kick, /warn, /warnings
+/warn, /warnings, /resetwarn
 /purge, /lock, /unlock, /slowmode
 /rules, /filter, /note, /welcome, /report
 
