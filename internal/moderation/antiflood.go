@@ -44,6 +44,26 @@ func RegisterAntiFloodCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *re
 	}, s.handleMessage))
 }
 
+func parseFloodConfig(args []string) (floodConfig, error) {
+	if len(args) < 2 || len(args) > 3 {
+		return floodConfig{}, fmt.Errorf("usage: /setflood <message_limit> <seconds> [delete|mute|ban]")
+	}
+	limit, err := strconv.Atoi(args[0])
+	if err != nil || limit < 2 || limit > 50 {
+		return floodConfig{}, fmt.Errorf("message limit must be between 2 and 50")
+	}
+	seconds, err := strconv.Atoi(args[1])
+	if err != nil || seconds < 3 || seconds > 300 {
+		return floodConfig{}, fmt.Errorf("time window must be between 3 and 300 seconds")
+	}
+	action := "delete"
+	if len(args) == 3 { action = strings.ToLower(args[2]) }
+	if action != "delete" && action != "mute" && action != "ban" {
+		return floodConfig{}, fmt.Errorf("action must be delete, mute or ban")
+	}
+	return floodConfig{Limit: limit, WindowSeconds: seconds, Action: action}, nil
+}
+
 func (s *floodService) available() error {
 	if s.db == nil { return fmt.Errorf("anti-flood storage is unavailable: PostgreSQL is not configured") }
 	if s.redis == nil { return fmt.Errorf("anti-flood detection is unavailable: Redis is not configured") }
@@ -55,16 +75,9 @@ func (s *floodService) setConfig(b *gotgbot.Bot, c *ext.Context) error {
 	actor, err := actorID(c); if err != nil { return reply(b,c,err.Error()) }
 	if err = RequireActorAdmin(b,chatID,actor); err != nil { return reply(b,c,err.Error()) }
 	if err = s.available(); err != nil { return reply(b,c,err.Error()) }
-	args := commandArgs(c.EffectiveMessage)
-	if len(args) < 2 || len(args) > 3 {
-		return reply(b,c,"Usage: /setflood <message_limit> <seconds> [delete|mute|ban]. Example: /setflood 5 10 mute")
-	}
-	limit, e1 := strconv.Atoi(args[0]); seconds, e2 := strconv.Atoi(args[1])
-	action := "delete"; if len(args)==3 { action = strings.ToLower(args[2]) }
-	if e1 != nil || limit < 2 || limit > 50 { return reply(b,c,"Message limit must be between 2 and 50.") }
-	if e2 != nil || seconds < 3 || seconds > 300 { return reply(b,c,"Time window must be between 3 and 300 seconds.") }
-	if action != "delete" && action != "mute" && action != "ban" { return reply(b,c,"Action must be delete, mute or ban.") }
-	if action != "delete" {
+	cfg, err := parseFloodConfig(commandArgs(c.EffectiveMessage))
+	if err != nil { return reply(b,c,err.Error()) }
+	if cfg.Action != "delete" {
 		if err = RequireBotRestrictPermission(b,chatID); err != nil { return reply(b,c,err.Error()) }
 	}
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second); defer cancel()
@@ -73,10 +86,10 @@ func (s *floodService) setConfig(b *gotgbot.Bot, c *ext.Context) error {
 		_,err=s.db.Exec(ctx,`INSERT INTO flood_configs(bot_id,chat_id,message_limit,window_seconds,action,updated_by)
 			VALUES($1,$2,$3,$4,$5,$6)
 			ON CONFLICT(bot_id,chat_id) DO UPDATE SET message_limit=EXCLUDED.message_limit,window_seconds=EXCLUDED.window_seconds,action=EXCLUDED.action,updated_by=EXCLUDED.updated_by,updated_at=NOW()`,
-			b.User.Id,chatID,limit,seconds,action,actor)
+			b.User.Id,chatID,cfg.Limit,cfg.WindowSeconds,cfg.Action,actor)
 	}
 	if err != nil { return reply(b,c,"I couldn't save the anti-flood settings. Please check the database and migration.") }
-	return reply(b,c,fmt.Sprintf("🛡️ Anti-flood enabled: more than %d messages in %d seconds triggers %s.",limit,seconds,action))
+	return reply(b,c,fmt.Sprintf("🛡️ Anti-flood enabled: more than %d messages in %d seconds triggers %s.",cfg.Limit,cfg.WindowSeconds,cfg.Action))
 }
 
 func (s *floodService) showConfig(b *gotgbot.Bot,c *ext.Context) error {
