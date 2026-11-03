@@ -175,7 +175,7 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 	key := raidCounterKey(botID,chatID)
 	count,err := raidWindowScript.Run(ctx,s.redis,[]string{key},
 		now.Add(-time.Duration(cfg.WindowSeconds)*time.Second).UnixMilli(),
-		now.UnixMilli(),strconv.FormatInt(user.Id,10),cfg.WindowSeconds*1000).Int64()
+		now.UnixMilli(),fmt.Sprintf("%d:%d",user.Id,now.UnixNano()),cfg.WindowSeconds*1000).Int64()
 	if err != nil || count < int64(cfg.JoinLimit) { return nil }
 
 	// A join wave is quarantined, not automatically banned. Each user is
@@ -185,15 +185,27 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 	quarantined := 0
 	ttl := time.Duration(cfg.QuarantineMinutes)*time.Minute + time.Minute
 	for _,rawID := range members {
-		userID,parseErr := strconv.ParseInt(rawID,10,64)
+		parts := strings.SplitN(rawID,":",2)
+		if len(parts) != 2 { continue }
+		userID,parseErr := strconv.ParseInt(parts[0],10,64)
 		if parseErr != nil || userID <= 0 { continue }
 		member,lookupErr := b.GetChatMember(chatID,userID,nil)
 		if lookupErr != nil || member == nil || member.GetStatus() != "member" { continue }
 		marker := raidQuarantineKey(botID,chatID,userID)
 		claimed,claimErr := s.redis.SetNX(ctx,marker,"1",ttl).Result()
 		if claimErr != nil || !claimed { continue }
-		_,restrictErr := b.RestrictChatMember(chatID,userID,gotgbot.ChatPermissions{},
-			&gotgbot.RestrictChatMemberOpts{UseIndependentChatPermissions:true,UntilDate:now.Add(time.Duration(cfg.QuarantineMinutes)*time.Minute).Unix()})
+		restrictParams := map[string]any{
+			"chat_id": chatID, "user_id": userID,
+			"permissions": map[string]any{
+				"can_send_messages": false, "can_send_audios": false, "can_send_documents": false,
+				"can_send_photos": false, "can_send_videos": false, "can_send_video_notes": false,
+				"can_send_voice_notes": false, "can_send_polls": false, "can_send_other_messages": false,
+				"can_add_web_page_previews": false, "can_react_to_messages": false,
+			},
+			"use_independent_chat_permissions": true,
+			"until_date": now.Add(time.Duration(cfg.QuarantineMinutes)*time.Minute).Unix(),
+		}
+		_,restrictErr := b.Request("restrictChatMember",restrictParams,nil)
 		if restrictErr != nil {
 			_ = s.redis.Del(ctx,marker).Err()
 			continue
@@ -207,4 +219,3 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 	return nil
 }
 
-var _ = strings.TrimSpace
