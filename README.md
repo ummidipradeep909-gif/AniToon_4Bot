@@ -8,7 +8,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather.
 - /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
-- /mute and /unmute with temporary/permanent restrictions and duration validation.
+- /mute and /unmute with temporary/permanent restrictions and duration validation.\n- /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -19,7 +19,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute and /unmute handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings and /resetwarn handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -31,7 +31,7 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - This is an initial single-process clone runner, not a production multi-tenant hosting platform. Encrypted persistent token storage, per-owner quotas, clone lifecycle controls, and isolation/rate limits are not implemented yet.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
 
-## Moderation usage
+## Warning commands\n\n- Reply to a member: /warn [reason]\n- Numeric target: /warn 123456789 [reason]\n- View history: reply with /warnings or use /warnings 123456789\n- Reset history: reply with /resetwarn or use /resetwarn 123456789\n\nWarning records are scoped to the group and stored in PostgreSQL. Only verified group admins may add, inspect or reset warnings. The bot will not warn the group owner or administrators. It shows an admin-review notice at three warnings but does not automatically mute or ban. If DATABASE_URL is absent or PostgreSQL is unavailable, these commands explain that warning storage is disabled.\n\n## Moderation usage
 
 - Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
@@ -51,14 +51,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Warnings, purge, locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Purge, locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
-1. Copy .env.example to .env and set BOT_TOKEN.
-2. Start services: docker compose up -d --build postgres redis policy.
+1. Copy .env.example to .env and set BOT_TOKEN and DATABASE_URL (PostgreSQL is required for warning commands).
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the warning table on a fresh database. For an existing database, apply migrations/001_initial.sql manually if chat_warnings is missing.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
