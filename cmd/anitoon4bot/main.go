@@ -50,7 +50,7 @@ func main() {
    cancel()
   }
   if err!=nil {
-   logger.Error("PostgreSQL unavailable; warning, lock and anti-flood configuration commands will be disabled","error",err)
+   logger.Error("PostgreSQL unavailable; warning, lock, anti-flood and anti-raid configuration commands will be disabled","error",err)
    if db!=nil { db.Close(); db=nil }
   } else {
    logger.Info("PostgreSQL connected")
