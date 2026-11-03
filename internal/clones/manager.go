@@ -103,7 +103,7 @@ func (m *Manager) start(token string,owner int64)(*gotgbot.User,error) {
  webhook,err:=clone.GetWebhookInfo(nil)
  if err!=nil { return nil,fmt.Errorf("could not check webhook") }
  if webhook!=nil && webhook.Url!="" { return nil,fmt.Errorf("remove existing webhook/hosting before connecting") }
- err=m.updater.StartPolling(clone,&ext.PollingOpts{GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}}})
+ err=m.updater.StartPolling(clone,&ext.PollingOpts{GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,AllowedUpdates:[]string{"message","chat_member"},RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}}})
  if err!=nil { return nil,fmt.Errorf("clone polling failed") }
  m.active[clone.User.Id]=true
  m.owners[owner]=clone.User.Id
