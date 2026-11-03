@@ -16,6 +16,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
 - /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
 - /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
+- /antilink on|off enables per-bot, per-group link protection. Non-admin messages containing unapproved external links or Telegram invite links are deleted; admins are exempt.
+- /allowlink add <domain>, /allowlink remove <domain> and /allowlink list manage the group's trusted domains. Exact domains and their subdomains are allowed; Telegram invite links remain blocked.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -26,7 +28,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog and /slowmode handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink and /allowlink handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -98,6 +100,17 @@ Apply `migrations/004_antiraid.sql` to existing databases. New Docker-managed da
 
 Apply `migrations/006_slowmode.sql` to existing databases. New Docker-managed databases run it during initialisation.
 
+## Link protection
+
+- `/antilink on` enables protection; `/antilink off` disables it; `/antilink` shows the current setting.
+- `/allowlink add example.com`, `/allowlink remove example.com` and `/allowlink list` manage up to 100 visible trusted domains.
+- Detects plain URLs, www links, bare domains, Telegram invite links and hidden text links in message entities. Text and media captions are inspected.
+- Telegram invite links (`t.me/+...`, `joinchat` and `addlist`) are blocked even if `t.me` is allowlisted.
+- Domain matching includes subdomains. Admins and bots are exempt. The bot needs Delete messages and PostgreSQL.
+- If settings or allowlist storage cannot be verified, the handler fails open and does not delete messages.
+
+Apply `migrations/007_link_protection.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
 ## Warning commands
 
 - Reply to a member: /warn [reason]
@@ -134,7 +147,7 @@ Filters, notes, welcome/goodbye, reports, encrypted clone credential persistence
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL and REDIS_URL (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql, migrations/003_antiflood.sql, migrations/004_antiraid.sql, migrations/005_moderation_audit_bot_id.sql and migrations/006_slowmode.sql in order to enable group locks, anti-flood, anti-raid and bot-scoped moderation logs.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql, migrations/003_antiflood.sql, migrations/004_antiraid.sql, migrations/005_moderation_audit_bot_id.sql and migrations/006_slowmode.sql and migrations/007_link_protection.sql in order to enable group locks, anti-flood, anti-raid, bot-scoped moderation logs and link protection.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
