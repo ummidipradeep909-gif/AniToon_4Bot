@@ -30,8 +30,6 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /raid — show anti-raid settings
 /clearraid — disable anti-raid
 
-<b>Coming next</b>
-/slowmode
-/rules, /filter, /note, /welcome, /report
+/modlog [count] — show recent moderation actions (1–20)
 
 Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
