@@ -53,6 +53,7 @@ func main() {
  bot.SetPrimaryBotID(b.User.Id)
  clones.RegisterCommands(dispatcher)
  moderation.RegisterWarningCommands(dispatcher,db)
+ moderation.RegisterPurgeCommands(dispatcher)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
