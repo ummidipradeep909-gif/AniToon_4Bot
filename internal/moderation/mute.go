@@ -58,7 +58,7 @@ func Mute(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil {
 		return reply(b, ctx, "Usage: reply with /mute [duration] [reason], or /mute <user_id> [duration] [reason]. "+err.Error())
 	}
-	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot mute myself.") }
+	if targetID == b.User.Id { return reply(b, ctx, "I cannot mute myself.") }
 	if err = RequireTargetIsModeratable(b, chatID, targetID); err != nil { return reply(b, ctx, err.Error()) }
 
 	untilDate := int64(0)
@@ -90,7 +90,7 @@ func Unmute(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	targetID, _, err := resolveTarget(ctx.EffectiveMessage, commandArgs(ctx.EffectiveMessage))
 	if err != nil { return reply(b, ctx, "Usage: reply with /unmute, or /unmute <user_id>. "+err.Error()) }
-	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot unmute myself.") }
+	if targetID == b.User.Id { return reply(b, ctx, "I cannot unmute myself.") }
 	member, err := b.GetChatMember(chatID, targetID, nil)
 	if err != nil { return reply(b, ctx, "Could not find that user in this group: "+err.Error()) }
 	if IsProtectedTarget(member.GetStatus()) { return reply(b, ctx, "I won't change the permissions of a group owner or administrator.") }
