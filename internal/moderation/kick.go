@@ -41,5 +41,6 @@ func Kick(b *gotgbot.Bot, ctx *ext.Context) error {
 	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "kick", reason, nil)
 	result := fmt.Sprintf("Kicked user %d. They may rejoin using a group invite link.", targetID)
 	if reason != "" { result += "\nReason: " + reason }
+	result += auditWarning(auditErr)
 	return reply(b, ctx, result)
 }
