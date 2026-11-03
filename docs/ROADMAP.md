@@ -28,7 +28,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [ ] Moderation audit log and log-channel integration
 
 ## Group protection
-- [ ] Per-chat locks and unlocks
+- [x] Per-chat permission locks and unlocks with persisted original permission snapshots, category-level controls and serialized updates
 - [ ] Anti-flood with exemptions and configurable actions
 - [ ] Anti-raid join state machine
 - [ ] CAPTCHA / join verification
