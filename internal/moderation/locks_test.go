@@ -48,7 +48,7 @@ func TestApplyPermissionLocks(t *testing.T) {
 		CanPinMessages: true,
 	}
 	got := applyPermissionLocks(original, []string{"media", "polls", "previews"})
-	if !got.CanSendAudios || got.CanSendMessages != true { // messages remain enabled
+	if got.CanSendAudios || got.CanSendMessages != true { // media is disabled; text messages remain enabled
 		t.Fatal("media lock unexpectedly changed message permissions")
 	}
 	if got.CanSendDocuments || got.CanSendPhotos || got.CanSendVideos || got.CanSendVideoNotes || got.CanSendVoiceNotes {
