@@ -81,6 +81,17 @@ func raidQuarantineKey(botID, chatID, userID int64) string {
 	return fmt.Sprintf("anitoon4:raid-quarantine:%d:%d:%d", botID, chatID, userID)
 }
 
+func raidQuarantinePermissions() map[string]any {
+	return map[string]any{
+		"can_send_messages": false, "can_send_audios": false, "can_send_documents": false,
+		"can_send_photos": false, "can_send_videos": false, "can_send_video_notes": false,
+		"can_send_voice_notes": false, "can_send_polls": false, "can_send_other_messages": false,
+		"can_add_web_page_previews": false, "can_react_to_messages": false,
+		"can_change_info": false, "can_invite_users": false, "can_pin_messages": false,
+		"can_manage_topics": false, "can_edit_tag": false,
+	}
+}
+
 func (s *antiRaidService) available() error {
 	if s.db == nil { return fmt.Errorf("anti-raid settings are unavailable: PostgreSQL is not configured") }
 	if s.redis == nil { return fmt.Errorf("anti-raid detection is unavailable: Redis is not configured") }
@@ -165,8 +176,12 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 	}
 	if s.db == nil || s.redis == nil { return nil }
 	user := cm.NewChatMember.GetUser()
-	if user.Id <= 0 || user.IsBot { return nil }
+	if user.Id <= 0 || user.IsBot || cm.From.IsBot || cm.From.Id <= 0 { return nil }
 	chatID,botID := cm.Chat.Id,b.User.Id
+	// Joins performed by a verified administrator are deliberate invitations,
+	// not a raid signal. If the inviter cannot be verified, fail open.
+	inviter,inviterErr := b.GetChatMember(chatID,cm.From.Id,nil)
+	if inviterErr != nil || inviter == nil || IsChatAdmin(inviter.GetStatus()) { return nil }
 	ctx,cancel := context.WithTimeout(context.Background(),5*time.Second)
 	defer cancel()
 	cfg,err := s.getConfig(ctx,botID,chatID)
@@ -196,12 +211,7 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 		if claimErr != nil || !claimed { continue }
 		restrictParams := map[string]any{
 			"chat_id": chatID, "user_id": userID,
-			"permissions": map[string]any{
-				"can_send_messages": false, "can_send_audios": false, "can_send_documents": false,
-				"can_send_photos": false, "can_send_videos": false, "can_send_video_notes": false,
-				"can_send_voice_notes": false, "can_send_polls": false, "can_send_other_messages": false,
-				"can_add_web_page_previews": false, "can_react_to_messages": false,
-			},
+			"permissions": raidQuarantinePermissions(),,
 			"use_independent_chat_permissions": true,
 			"until_date": now.Add(time.Duration(cfg.QuarantineMinutes)*time.Minute).Unix(),
 		}
