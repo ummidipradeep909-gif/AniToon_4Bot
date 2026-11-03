@@ -11,6 +11,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /mute and /unmute with temporary/permanent restrictions and duration validation.
 - /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
 - /del to delete the replied-to message, and /purge to delete a replied-to range through the command or the latest 1–100 message IDs. Both require a verified group admin and the bot's explicit Delete messages permission; partial failures are counted and reported.
+- /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -41,6 +42,17 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - A single purge is limited to 100 message IDs. Telegram may refuse messages older than 48 hours or otherwise non-deletable messages; the bot reports successful and failed deletion counts separately.
 - Both commands require the invoking user to be a verified group administrator and the bot to be an administrator with Telegram's **Delete messages** permission.
 
+## Group permission locks
+
+- `/lock` locks all supported default permissions for regular members.
+- `/lock media` or `/lock stickers` locks only that category; supported types are `messages`, `media`, `stickers`, `polls`, `previews`, `info`, `invites`, `pin`, `topics` and `reactions`.
+- `/unlock media` removes one category while preserving the other active locks. `/unlock` restores the complete original permission snapshot.
+- `/locks` lists the active lock categories.
+- Lock state and the original Telegram default permissions are stored per group in PostgreSQL, so they survive bot restarts. Changes require a verified group administrator and the bot's `can_restrict_members` permission.
+- Locking fails closed if Telegram does not return the current default permissions. Changes are serialized per group to prevent concurrent lock commands from overwriting each other.
+
+These commands change group default permissions for regular members; they do not override administrators or existing member-specific permission exceptions.
+
 ## Warning commands
 
 - Reply to a member: /warn [reason]
@@ -70,14 +82,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Locks, slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Slow mode, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN and DATABASE_URL (PostgreSQL is required for warning commands).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the warning table on a fresh database. For an existing database, apply migrations/001_initial.sql manually if chat_warnings is missing.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. Apply migrations/002_chat_permission_locks.sql after it to enable persistent group locks.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
