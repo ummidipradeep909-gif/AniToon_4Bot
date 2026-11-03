@@ -62,7 +62,7 @@ func Mute(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	untilDate := int64(0)
 	if duration > 0 { untilDate = time.Now().Add(duration).Unix() }
-	permissions := gotgbot.ChatPermissions{UseIndependentChatPermissions: true}
+	permissions := gotgbot.ChatPermissions{}
 	ok, err := b.RestrictChatMember(chatID, targetID, permissions, &gotgbot.RestrictChatMemberOpts{
 		UseIndependentChatPermissions: true,
 		UntilDate: untilDate,
