@@ -8,7 +8,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather.
 - /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
-- /mute and /unmute with temporary/permanent restrictions and duration validation.\n- /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
+- /mute and /unmute with temporary/permanent restrictions and duration validation.
+- /warn, /warnings and /resetwarn with per-group PostgreSQL persistence, admin authorization and protected-target checks. At three warnings, the bot flags the member for admin review; it does not automatically punish them.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -31,7 +32,16 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - This is an initial single-process clone runner, not a production multi-tenant hosting platform. Encrypted persistent token storage, per-owner quotas, clone lifecycle controls, and isolation/rate limits are not implemented yet.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
 
-## Warning commands\n\n- Reply to a member: /warn [reason]\n- Numeric target: /warn 123456789 [reason]\n- View history: reply with /warnings or use /warnings 123456789\n- Reset history: reply with /resetwarn or use /resetwarn 123456789\n\nWarning records are scoped to the group and stored in PostgreSQL. Only verified group admins may add, inspect or reset warnings. The bot will not warn the group owner or administrators. It shows an admin-review notice at three warnings but does not automatically mute or ban. If DATABASE_URL is absent or PostgreSQL is unavailable, these commands explain that warning storage is disabled.\n\n## Moderation usage
+## Warning commands
+
+- Reply to a member: /warn [reason]
+- Numeric target: /warn 123456789 [reason]
+- View history: reply with /warnings or use /warnings 123456789
+- Reset history: reply with /resetwarn or use /resetwarn 123456789
+
+Warning records are scoped to the group and stored in PostgreSQL. Only verified group admins may add, inspect or reset warnings. The bot will not warn the group owner or administrators. It shows an admin-review notice at three warnings but does not automatically mute or ban. If DATABASE_URL is absent or PostgreSQL is unavailable, these commands explain that warning storage is disabled.
+
+## Moderation usage
 
 - Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
