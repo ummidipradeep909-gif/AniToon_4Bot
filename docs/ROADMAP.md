@@ -19,10 +19,10 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Moderation core
 - [x] Shared actor-admin and bot-permission checks (initial command-level implementation)
 - [x] Reply/ID target resolver and protected-target checks
-- [x] Ban and unban command handlers (audit persistence and integration tests remain required)
-- [x] Mute and unmute command handlers (audit persistence and chat-default permission preservation remain required)
-- [x] Kick using Telegram ban-then-unban sequence (failure recovery is reported; audit persistence remains required)
-- [x] PostgreSQL-backed warning history, listing and reset (three-warning admin review notice; no automatic punishment)
+- [x] Ban and unban command handlers with PostgreSQL audit records
+- [x] Mute and unmute command handlers with PostgreSQL audit records (chat-default permission preservation remains required)
+- [x] Kick using Telegram ban-then-unban sequence with failure recovery and PostgreSQL audit records
+- [x] PostgreSQL-backed warning history, listing, reset and audit records (three-warning admin review notice; no automatic punishment)
 - [x] /del and /purge with verified admin and bot delete-permission checks, a 100-message limit and partial-failure reporting
 - [ ] Slow mode
 - [x] PostgreSQL moderation audit log with per-bot/per-group `/modlog` (log-channel delivery not included)
@@ -31,7 +31,6 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Per-chat permission locks and unlocks with persisted original permission snapshots, category-level controls and serialized updates
 - [x] Redis-backed per-bot/per-chat anti-flood with admin exemptions, sliding windows and configurable delete/mute/ban actions (integration/load tests remain required)
 - [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (Telegram join integration tests remain required)
-- [ ] CAPTCHA / join verification
 - [ ] URL, invite, forward and media policies
 - [ ] Blacklists and keyword rules
 
@@ -41,8 +40,6 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [ ] Notes and custom filters
 - [ ] Reports and admin notifications
 - [ ] User information and admin list
-- [ ] AFK status
-- [ ] RSS and scheduled announcements
 
 ## Operations
 - [ ] Structured moderation metrics
