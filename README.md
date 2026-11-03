@@ -13,7 +13,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /del to delete the replied-to message, and /purge to delete a replied-to range through the command or the latest 1–100 message IDs. Both require a verified group admin and the bot's explicit Delete messages permission; partial failures are counted and reported.
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
-- /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
+- /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.\n- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -24,7 +24,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid and /clearraid handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid and /modlog handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -66,7 +66,7 @@ These commands change group default permissions for regular members; they do not
 
 Apply `migrations/003_antiflood.sql` to existing databases. New Docker-managed databases run it during initialisation.
 
-## Anti-raid protection
+## Moderation audit log\n\n- `/modlog` shows the latest 10 actions; `/modlog 20` shows up to 20. Only verified group administrators can view it.\n- Confirmed ban, unban, kick, mute, unmute, warn, warning reset, delete and purge actions are recorded with bot ID, group ID, actor ID, target ID (when applicable), reason/summary and timestamp.\n- Main bot and clone records are isolated by bot ID. Audit persistence uses PostgreSQL.\n- If Telegram confirms an action but the audit write fails, the action remains completed and the command reports that the log could not be saved.\n\nApply `migrations/005_moderation_audit_bot_id.sql` to existing databases. New Docker-managed databases run it during initialisation.\n\n## Anti-raid protection
 
 - Enable in a supergroup with `/setraid 5 10 10`: five or more new member joins within ten seconds trigger a raid response.
 - The bot temporarily restricts the regular members in the detected join wave for ten minutes. Telegram automatically expires each restriction; the bot does not automatically ban new members.
@@ -106,14 +106,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Slow mode, CAPTCHA, filters, notes, welcome/goodbye, reports, durable moderation audit logging, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Slow mode, filters, notes, welcome/goodbye, reports, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. CAPTCHA, AFK and RSS/scheduled-announcement features are intentionally out of scope. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL and REDIS_URL (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings and locks).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql, migrations/003_antiflood.sql and migrations/004_antiraid.sql in order to enable group locks, anti-flood and anti-raid.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql, migrations/003_antiflood.sql, migrations/004_antiraid.sql and migrations/005_moderation_audit_bot_id.sql in order to enable group locks, anti-flood, anti-raid and bot-scoped moderation logs.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
