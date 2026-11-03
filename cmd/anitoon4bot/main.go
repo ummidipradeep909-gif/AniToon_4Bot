@@ -76,6 +76,7 @@ func main() {
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
+ moderation.RegisterLinkProtectionCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
