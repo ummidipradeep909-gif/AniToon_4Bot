@@ -80,8 +80,12 @@ func ModLog(b *gotgbot.Bot, c *ext.Context) error {
 		var action,reason string
 		var created time.Time
 		if err=rows.Scan(&adminID,&targetID,&action,&reason,&created); err != nil { return reply(b,c,"I couldn't read the moderation log.") }
-		fmt.Fprintf(&out,"\n\n%s — %s\nTarget: %d · Admin: %d",created.UTC().Format("2006-01-02 15:04 UTC"),action,targetID,adminID)
-		if reason!="" { fmt.Fprintf(&out,"\nReason: %s",reason) }
+		fmt.Fprintf(&out,"\n\n%s — %s\nAdmin: %d",created.UTC().Format("2006-01-02 15:04 UTC"),action,adminID)
+		if targetID > 0 { fmt.Fprintf(&out,"\nTarget: %d",targetID) }
+		if reason!="" {
+			if len(reason)>120 { reason=reason[:117]+"..." }
+			fmt.Fprintf(&out,"\nReason: %s",reason)
+		}
 		count++
 	}
 	if err=rows.Err(); err != nil { return reply(b,c,"I couldn't read the moderation log.") }
