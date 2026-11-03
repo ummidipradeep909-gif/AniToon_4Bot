@@ -30,6 +30,9 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /raid — show anti-raid settings
 /clearraid — disable anti-raid
 /slowmode [seconds|off] — set or disable member message interval
+/antilink [on|off] — block unapproved links and Telegram invites
+/allowlink add|remove <domain> — manage trusted domains
+/allowlink list — show trusted domains
 
 /modlog [count] — show recent moderation actions (1–20)
 
