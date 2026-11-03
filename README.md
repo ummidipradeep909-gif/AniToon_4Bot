@@ -14,7 +14,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
 - /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
-- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.\n- /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
+- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -25,7 +26,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid and /modlog, /slowmode handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog and /slowmode handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -85,7 +86,17 @@ Apply `migrations/005_moderation_audit_bot_id.sql` and `migrations/006_slowmode.
 - Redis tracks join events atomically; PostgreSQL stores per-bot/per-group settings. If either service is unavailable, the bot fails open and does not quarantine users.
 - Telegram `chat_member` updates must be enabled for both the main bot and clone polling. The bot must be an administrator to receive these updates reliably.
 
-Apply `migrations/004_antiraid.sql` to existing databases. New Docker-managed databases run it during initialisation.\n\n## Slow mode\n\n- `/slowmode 10` allows each regular member one message every 10 seconds. Supported intervals are 1–3600 seconds.\n- `/slowmode` shows the current setting; `/slowmode off` disables it.\n- Administrators and slash commands are exempt. Each clone has independent settings per group.\n- The bot enforces this by deleting messages sent before a member's interval expires. This is not Telegram's native slow-mode setting. The bot needs **Delete messages**, PostgreSQL and Redis.\n- If the database or Redis is unavailable, enforcement fails open and does not delete messages.\n\nApply `migrations/006_slowmode.sql` to existing databases. New Docker-managed databases run it during initialisation.
+Apply `migrations/004_antiraid.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
+## Slow mode
+
+- `/slowmode 10` allows each regular member one message every 10 seconds. Supported intervals are 1–3600 seconds.
+- `/slowmode` shows the current setting; `/slowmode off` disables it.
+- Administrators and slash commands are exempt. Each clone has independent settings per group.
+- The bot enforces this by deleting messages sent before a member's interval expires. This is not Telegram's native slow-mode setting. The bot needs **Delete messages**, PostgreSQL and Redis.
+- If the database or Redis is unavailable, enforcement fails open and does not delete messages.
+
+Apply `migrations/006_slowmode.sql` to existing databases. New Docker-managed databases run it during initialisation.
 
 ## Warning commands
 
