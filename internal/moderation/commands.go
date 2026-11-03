@@ -67,6 +67,7 @@ func Ban(b *gotgbot.Bot, ctx *ext.Context) error {
 	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "ban", reason, nil)
 	text := fmt.Sprintf("Banned user %d.", targetID)
 	if reason != "" { text += "\nReason: " + reason }
+	text += auditWarning(auditErr)
 	return reply(b, ctx, text)
 }
 
