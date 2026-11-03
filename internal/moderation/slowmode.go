@@ -43,7 +43,7 @@ func RegisterSlowModeCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *red
 			return false
 		}
 		// Commands remain usable and are not counted as ordinary chat messages.
-		return !strings.HasPrefix(strings.TrimSpace(m.Text), "/")
+		return !strings.HasPrefix(strings.TrimSpace(m.Text), "/") && !strings.HasPrefix(strings.TrimSpace(m.Caption), "/")
 	}, s.handleMessage))
 }
 
