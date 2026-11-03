@@ -95,5 +95,6 @@ func resetWarnings(b *gotgbot.Bot,c *ext.Context,pool *pgxpool.Pool) error {
  ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second); defer cancel()
  tag,err:=pool.Exec(ctx,`DELETE FROM chat_warnings WHERE chat_id=$1 AND user_id=$2`,chatID,targetID)
  if err!=nil{return reply(b,c,"I couldn't reset warnings because the database is unavailable.")}
- return reply(b,c,fmt.Sprintf("Reset %d warning(s) for user %d in this group.",tag.RowsAffected(),targetID))
+ auditErr:=writeModerationAudit(b.User.Id,chatID,actor,targetID,"resetwarn",fmt.Sprintf("Removed %d warning(s)",tag.RowsAffected()),nil)
+ return reply(b,c,fmt.Sprintf("Reset %d warning(s) for user %d in this group.%s",tag.RowsAffected(),targetID,auditWarning(auditErr)))
 }
