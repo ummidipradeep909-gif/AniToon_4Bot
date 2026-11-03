@@ -79,8 +79,13 @@ func Unban(b *gotgbot.Bot, ctx *ext.Context) error {
 	targetID, _, err := resolveTarget(ctx.EffectiveMessage, commandArgs(ctx.EffectiveMessage))
 	if err != nil { return reply(b, ctx, "Usage: /unban <user_id> (or reply to a user's message). "+err.Error()) }
 	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot unban myself.") }
-	if member, lookupErr := b.GetChatMember(chatID, targetID, nil); lookupErr == nil && IsProtectedTarget(member.GetStatus()) {
-		return reply(b, ctx, "I won't change the membership status of a group owner or administrator.")
+	if member, lookupErr := b.GetChatMember(chatID, targetID, nil); lookupErr == nil {
+		if IsProtectedTarget(member.GetStatus()) {
+			return reply(b, ctx, "I won't change the membership status of a group owner or administrator.")
+		}
+		if member.GetStatus() != gotgbot.ChatMemberStatusKicked {
+			return reply(b, ctx, "That user is not currently banned in this group.")
+		}
 	}
 	ok, err := b.UnbanChatMember(chatID, targetID, &gotgbot.UnbanChatMemberOpts{OnlyIfBanned: true})
 	if err != nil { return reply(b, ctx, "Telegram could not unban that user: "+err.Error()) }
