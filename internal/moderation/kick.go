@@ -38,6 +38,7 @@ func Kick(b *gotgbot.Bot, ctx *ext.Context) error {
 		return reply(b, ctx, fmt.Sprintf("User %d was removed, but Telegram did not confirm unbanning. They may remain banned; check with /unban %d.", targetID, targetID))
 	}
 
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "kick", reason, nil)
 	result := fmt.Sprintf("Kicked user %d. They may rejoin using a group invite link.", targetID)
 	if reason != "" { result += "\nReason: " + reason }
 	return reply(b, ctx, result)
