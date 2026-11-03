@@ -51,14 +51,14 @@ func main() {
    cancel()
   }
   if err!=nil {
-   logger.Error("PostgreSQL unavailable; warning commands will be disabled","error",err)
+   logger.Error("PostgreSQL unavailable; warning, lock and anti-flood configuration commands will be disabled","error",err)
    if db!=nil { db.Close(); db=nil }
   } else {
    logger.Info("PostgreSQL connected")
    defer db.Close()
   }
  } else {
-  logger.Warn("DATABASE_URL is empty; warning commands will be disabled")
+  logger.Warn("DATABASE_URL is empty; warning, lock and anti-flood configuration commands will be disabled")
  }
 
  dispatcher:=ext.NewDispatcher(&ext.DispatcherOpts{
