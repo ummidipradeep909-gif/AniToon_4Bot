@@ -120,7 +120,7 @@ func isTelegramInviteLink(raw string) bool {
 		return false
 	}
 	lower := strings.ToLower(path)
-	return strings.HasPrefix(lower, "/+") || strings.HasPrefix(lower, "/joinchat/") || strings.HasPrefix(lower, "/addlist/")
+	return strings.HasPrefix(lower, "/+") || strings.HasPrefix(lower, "/joinchat/") || strings.HasPrefix(lower, "/addlist/") || strings.HasPrefix(lower, "tg://join?invite=")
 }
 
 func domainAllowed(host string, allowed []string) bool {
