@@ -53,6 +53,9 @@ func expandedLockTypes(types []string) []string {
 }
 
 func normalizeLockTypes(types []string) []string {
+	for _, value := range types {
+		if value == "all" { return []string{"all"} }
+	}
 	seen := make(map[string]bool, len(types))
 	for _, value := range types { seen[value] = true }
 	out := make([]string, 0, len(seen))
