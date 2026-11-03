@@ -33,7 +33,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (Telegram join integration tests remain required)
 - [x] URL and Telegram invite protection with per-bot/per-group trusted-domain allowlist
 - [x] Forwarded-message protection with per-bot/per-group settings and verified admin exemptions (media policies remain separate)
-- [ ] Blacklists and keyword rules
+- [x] Per-bot/per-group keyword blacklist with case-insensitive text/caption matching, admin exemptions, delete/warn modes and PostgreSQL persistence (automated handler/integration tests remain required)
 
 ## Community
 - [ ] Welcome and goodbye templates
