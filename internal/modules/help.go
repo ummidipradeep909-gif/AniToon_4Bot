@@ -2,19 +2,18 @@ package modules
 
 const HelpText = `<b>AniToon_4Bot — Group Management</b>
 
-<b>General</b>
+<b>General commands</b>
 /start — introduction
 /help — command guide
 /id — show chat and user IDs
 
-<b>Moderation roadmap</b>
-/ban, /unban, /mute, /unmute, /kick
-/warn, /warnings, /resetwarns
+<b>Available moderation</b>
+/ban — ban a member (reply or numeric user ID)
+/unban — remove a ban (numeric user ID)
+
+<b>Coming next</b>
+/mute, /unmute, /kick, /warn, /warnings
 /purge, /lock, /unlock, /slowmode
+/rules, /filter, /note, /welcome, /report
 
-<b>Community tools roadmap</b>
-/rules, /setrules, /filter, /stop
-/note, /get, /welcome, /goodbye
-/report, /adminlist, /info
-
-Add the bot as an administrator and grant only the permissions needed for the features you enable.`
+Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
