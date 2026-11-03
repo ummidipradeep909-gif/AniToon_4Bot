@@ -70,6 +70,7 @@ func main() {
  bot.SetPrimaryBotID(b.User.Id)
  clones.RegisterCommands(dispatcher)
  moderation.RegisterWarningCommands(dispatcher,db)
+ moderation.RegisterAuditCommands(dispatcher,db)
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
