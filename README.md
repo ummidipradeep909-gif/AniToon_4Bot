@@ -13,7 +13,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /del to delete the replied-to message, and /purge to delete a replied-to range through the command or the latest 1–100 message IDs. Both require a verified group admin and the bot's explicit Delete messages permission; partial failures are counted and reported.
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
-- /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.\n- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
+- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -66,7 +67,16 @@ These commands change group default permissions for regular members; they do not
 
 Apply `migrations/003_antiflood.sql` to existing databases. New Docker-managed databases run it during initialisation.
 
-## Moderation audit log\n\n- `/modlog` shows the latest 10 actions; `/modlog 20` shows up to 20. Only verified group administrators can view it.\n- Confirmed ban, unban, kick, mute, unmute, warn, warning reset, delete and purge actions are recorded with bot ID, group ID, actor ID, target ID (when applicable), reason/summary and timestamp.\n- Main bot and clone records are isolated by bot ID. Audit persistence uses PostgreSQL.\n- If Telegram confirms an action but the audit write fails, the action remains completed and the command reports that the log could not be saved.\n\nApply `migrations/005_moderation_audit_bot_id.sql` to existing databases. New Docker-managed databases run it during initialisation.\n\n## Anti-raid protection
+## Moderation audit log
+
+- `/modlog` shows the latest 10 actions; `/modlog 20` shows up to 20. Only verified group administrators can view it.
+- Confirmed ban, unban, kick, mute, unmute, warn, warning reset, delete and purge actions are recorded with bot ID, group ID, actor ID, target ID (when applicable), reason/summary and timestamp.
+- Main bot and clone records are isolated by bot ID. Audit persistence uses PostgreSQL.
+- If Telegram confirms an action but the audit write fails, the action remains completed and the command reports that the log could not be saved.
+
+Apply `migrations/005_moderation_audit_bot_id.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
+## Anti-raid protection
 
 - Enable in a supergroup with `/setraid 5 10 10`: five or more new member joins within ten seconds trigger a raid response.
 - The bot temporarily restricts the regular members in the detected join wave for ten minutes. Telegram automatically expires each restriction; the bot does not automatically ban new members.
