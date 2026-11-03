@@ -78,6 +78,7 @@ func main() {
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db)
  moderation.RegisterForwardProtectionCommands(dispatcher,db)
+ moderation.RegisterBlacklistCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
