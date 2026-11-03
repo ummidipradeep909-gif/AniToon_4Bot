@@ -10,9 +10,11 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] CI checks for Go and Python
 
 ## Moderation core
-- [ ] Shared actor-admin and bot-permission authorization
-- [ ] Reply/ID target resolver and protected-target checks
-- [x] Ban and unban command handlers (initial version; audit persistence and integration tests remain required)\n- [ ] Kick, mute and unmute
+- [x] Shared actor-admin and bot-permission checks (initial command-level implementation)
+- [x] Reply/ID target resolver and protected-target checks
+- [x] Ban and unban command handlers (audit persistence and integration tests remain required)
+- [x] Mute and unmute command handlers (audit persistence and chat-default permission preservation remain required)
+- [ ] Kick
 - [ ] Warning history, thresholds and reset
 - [ ] Purge and message deletion
 - [ ] Slow mode
