@@ -1,51 +1,47 @@
 # AniToon_4Bot
 
-A modular Telegram group-management bot project inspired by the breadth of Rose Bot. This is an independent implementation; it does not use Rose branding or claim feature parity.
+An independently implemented Telegram group-management bot, designed around a Go Telegram runtime, a Python policy service, PostgreSQL and Redis. The goal is broad Rose-style functionality, delivered in tested stages.
 
-## Architecture
+## Implemented
 
-- **Go Telegram runtime** — Bot API polling, command routing and Telegram actions.
-- **Python policy service** — risk and automation decisions behind a private service boundary.
-- **PostgreSQL** — durable chat settings, membership records and moderation audit history.
-- **Redis** — rate counters, short-lived state, anti-flood windows and caching.
-- **Telegram-only administration** — no web dashboard is planned.
-
-## What is implemented now
-
-- Go polling runtime with `/start`, `/help` and `/id`.
-- Environment validation and basic configuration tests.
-- FastAPI policy service with dependency health checks and a non-enforcing per-user message counter.
-- PostgreSQL starter schema for chats, members, moderation history, filters and warnings.
-- Docker Compose services for PostgreSQL, Redis and the policy service.
+- Go long-polling runtime.
+- /start, /help and /id.
+- /ban and /unban with live administrator checks, bot Restrict members permission checks, reply/numeric-ID targeting, protected administrator targets and Telegram API error handling.
+- Python FastAPI health endpoint and non-enforcing per-user rate telemetry.
+- PostgreSQL starter schema and Docker Compose infrastructure.
 - GitHub Actions checks for Go tests/vet and Python syntax compilation.
 
-**Important:** moderation commands, anti-spam enforcement and the broader Rose-style feature set are not implemented yet. The policy endpoint currently returns `allow` and does not punish users. Do not deploy this as a production moderation bot.
+## Moderation command usage
 
-## Roadmap
+- Reply to a member's message: /ban [reason]
+- Numeric target: /ban 123456789 [reason]
+- Remove a ban: /unban 123456789
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) for the staged feature inventory. A feature is considered complete only after actor authorization, bot-permission checks, persistence, audit logging, error handling and tests are implemented together.
+Only numeric IDs and reply targets are supported. Usernames are not resolved because the Bot API does not provide a general username-to-user-ID lookup. Commands require a personally verifiable group administrator; anonymous-admin commands are rejected. The bot must be a group administrator with Restrict members permission.
 
-## Local development
+## Important limitations
+
+This is an incremental implementation, not a completed Rose replacement. Mute, kick, warnings, purge, locks, anti-flood enforcement, anti-raid, CAPTCHA, filters, notes, welcome/goodbye and reports are not implemented yet. The policy endpoint is telemetry only and never automatically punishes users. Do not deploy this as a complete production moderation bot.
+
+## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
-1. Copy `.env.example` to `.env` and set `BOT_TOKEN`.
-2. Start infrastructure: `docker compose up -d --build postgres redis policy`.
-3. Run Go checks: `go test ./...` and `go vet ./...`.
-4. Start the bot: `go run ./cmd/anitoon4bot`.
+1. Copy .env.example to .env and set BOT_TOKEN.
+2. Start services: docker compose up -d --build postgres redis policy.
+3. Run go test ./... and go vet ./....
+4. Run the bot: go run ./cmd/anitoon4bot.
 
-For local Go execution, the Go toolchain must be able to download the `gotgbot` module from GitHub.
+The Go module uses gotgbot v2.0.0-rc.37. GitHub Actions runs Go and Python checks on pushes and pull requests.
 
-## Security requirements
+## Security
 
-- Never commit bot tokens, API keys or database credentials.
-- Check the invoking user's admin rights and the bot's required rights before every moderation action.
-- Never let the bot moderate chat creators or administrators unless Telegram explicitly allows the operation.
-- Persist an audit record for every successful enforcement action.
-- Escape untrusted Telegram text before inserting it into HTML.
-- Keep internal policy endpoints private or authenticate service-to-service calls.
+- Never commit bot tokens or credentials.
+- Fail closed if the actor's admin state cannot be verified.
+- Verify bot permissions before calling Telegram moderation endpoints.
+- Protect chat creators and administrators from routine moderation.
+- Keep untrusted user-provided reasons as plain text (not HTML).
 - Use 64-bit Telegram identifiers.
+- Keep policy-service endpoints private or authenticate service-to-service calls.
 
-## Reference and licensing
-
-The legacy Python bot source was reviewed as a feature checklist, not imported into the new Go runtime. The roadmap records the intended modules without claiming they already exist. Preserve upstream license notices for any vendored dependencies and review them before redistribution.
+See docs/ROADMAP.md for the staged feature inventory and docs/architecture/DECISIONS.md for security boundaries.
