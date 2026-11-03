@@ -26,6 +26,9 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /setflood <limit> <seconds> [delete|mute|ban] — configure anti-flood
 /flood — show anti-flood settings
 /clearflood — disable anti-flood
+/setraid <joins> <seconds> [minutes] — configure anti-raid
+/raid — show anti-raid settings
+/clearraid — disable anti-raid
 
 <b>Coming next</b>
 /slowmode
