@@ -73,13 +73,14 @@ func main() {
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
+ moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger)
  cloneManager.Register(dispatcher)
 
  logger.Info("AniToon_4Bot starting","username",b.User.Username)
  if err:=updater.StartPolling(b,&ext.PollingOpts{
   DropPendingUpdates:false,
-  GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}},
+  GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,AllowedUpdates:[]string{"message","chat_member"},RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}},
  }); err!=nil { logger.Error("polling stopped","error",err); os.Exit(1) }
  updater.Idle()
 }
