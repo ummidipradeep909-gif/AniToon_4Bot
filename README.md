@@ -13,7 +13,7 @@ An independently implemented Telegram group-management bot, designed around a Go
 - PostgreSQL starter schema and Docker Compose infrastructure.
 - GitHub Actions checks for Go tests/vet and Python syntax compilation.
 
-## Moderation usage
+## Create your own bot button\n\nThe /start message includes a **Create Your Own Bot** inline button that opens Telegram's official [@BotFather](https://t.me/BotFather). Users can create a new Telegram bot there with /newbot. The button is an onboarding shortcut only: personal AniToon clone provisioning, secure token intake/encryption, and multi-instance hosting are not implemented yet. Never send a bot token to an untrusted person or paste it into a public chat.\n\n## Moderation usage
 
 - Reply to a member: /ban [reason]
 - Numeric target: /ban 123456789 [reason]
