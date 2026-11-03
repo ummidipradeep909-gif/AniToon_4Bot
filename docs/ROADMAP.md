@@ -30,7 +30,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Group protection
 - [x] Per-chat permission locks and unlocks with persisted original permission snapshots, category-level controls and serialized updates
 - [x] Redis-backed per-bot/per-chat anti-flood with admin exemptions, sliding windows and configurable delete/mute/ban actions (integration/load tests remain required)
-- [ ] Anti-raid join state machine
+- [x] Redis-backed join-wave detection with per-bot/per-chat thresholds, admin exemptions and expiring quarantine (join/CAPTCHA integration tests remain required)
 - [ ] CAPTCHA / join verification
 - [ ] URL, invite, forward and media policies
 - [ ] Blacklists and keyword rules
