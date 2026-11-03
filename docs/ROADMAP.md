@@ -12,7 +12,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Moderation core
 - [ ] Shared actor-admin and bot-permission authorization
 - [ ] Reply/ID target resolver and protected-target checks
-- [ ] Ban, unban, kick, mute and unmute
+- [x] Ban and unban command handlers (initial version; audit persistence and integration tests remain required)\n- [ ] Kick, mute and unmute
 - [ ] Warning history, thresholds and reset
 - [ ] Purge and message deletion
 - [ ] Slow mode
