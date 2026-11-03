@@ -64,6 +64,7 @@ func Ban(b *gotgbot.Bot, ctx *ext.Context) error {
 	ok, err := b.BanChatMember(chatID, targetID, &gotgbot.BanChatMemberOpts{RevokeMessages: true})
 	if err != nil { return reply(b, ctx, "Telegram could not ban that user: "+err.Error()) }
 	if !ok { return reply(b, ctx, "Telegram did not confirm the ban.") }
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "ban", reason, nil)
 	text := fmt.Sprintf("Banned user %d.", targetID)
 	if reason != "" { text += "\nReason: " + reason }
 	return reply(b, ctx, text)
@@ -90,5 +91,6 @@ func Unban(b *gotgbot.Bot, ctx *ext.Context) error {
 	ok, err := b.UnbanChatMember(chatID, targetID, &gotgbot.UnbanChatMemberOpts{OnlyIfBanned: true})
 	if err != nil { return reply(b, ctx, "Telegram could not unban that user: "+err.Error()) }
 	if !ok { return reply(b, ctx, "Telegram did not confirm the unban.") }
-	return reply(b, ctx, fmt.Sprintf("Unbanned user %d. They can now rejoin using an invite link.", targetID))
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, targetID, "unban", "", nil)
+	return reply(b, ctx, fmt.Sprintf("Unbanned user %d. They can now rejoin using an invite link.%s", targetID, auditWarning(auditErr)))
 }
