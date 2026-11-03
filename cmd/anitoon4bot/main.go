@@ -35,7 +35,7 @@ func main() {
    cancel()
   } else { err=parseErr }
   if err!=nil {
-   logger.Error("Redis unavailable; anti-flood commands and detection will be disabled","error",err)
+   logger.Error("Redis unavailable; anti-flood and slow-mode detection will be disabled","error",err)
    if redisClient!=nil { _=redisClient.Close(); redisClient=nil }
   } else { logger.Info("Redis connected"); defer redisClient.Close() }
  } else { logger.Warn("REDIS_URL is empty; anti-flood detection will be disabled") }
@@ -50,14 +50,14 @@ func main() {
    cancel()
   }
   if err!=nil {
-   logger.Error("PostgreSQL unavailable; warning, lock, anti-flood and anti-raid configuration commands will be disabled","error",err)
+   logger.Error("PostgreSQL unavailable; warning, lock, anti-flood, anti-raid and slow-mode configuration commands will be disabled","error",err)
    if db!=nil { db.Close(); db=nil }
   } else {
    logger.Info("PostgreSQL connected")
    defer db.Close()
   }
  } else {
-  logger.Warn("DATABASE_URL is empty; warning, lock and anti-flood configuration commands will be disabled")
+  logger.Warn("DATABASE_URL is empty; warning, lock, anti-flood and slow-mode configuration commands will be disabled")
  }
 
  dispatcher:=ext.NewDispatcher(&ext.DispatcherOpts{
