@@ -104,6 +104,9 @@ func DeleteRepliedMessage(b *gotgbot.Bot, ctx *ext.Context) error {
 	if !ok {
 		return reply(b, ctx, "Telegram did not confirm deletion of the replied-to message.")
 	}
+	if auditErr := writeModerationAudit(b.User.Id, chatID, actor, 0, "delete", fmt.Sprintf("Deleted message %d", message.ReplyToMessage.MessageId), nil); auditErr != nil {
+		return reply(b, ctx, "Message deleted. Warning: its audit record could not be saved.")
+	}
 	return nil
 }
 
@@ -141,11 +144,13 @@ func PurgeMessages(b *gotgbot.Bot, ctx *ext.Context) error {
 		deleted++
 	}
 
+	auditErr := writeModerationAudit(b.User.Id, chatID, actor, 0, "purge", fmt.Sprintf("Deleted %d; failed %d; message IDs %d-%d", deleted, failed, start, end), nil)
 	if failed == 0 {
-		_, err = b.SendMessage(chatID, fmt.Sprintf("🧹 Purge complete: deleted %d message(s).", deleted), nil)
+		report := fmt.Sprintf("🧹 Purge complete: deleted %d message(s).%s", deleted, auditWarning(auditErr))
+		_, err = b.SendMessage(chatID, report, nil)
 		return err
 	}
-	report := fmt.Sprintf("🧹 Purge partially completed: deleted %d message(s); %d message ID(s) could not be deleted. Telegram may reject messages older than 48 hours, missing IDs, or otherwise non-deletable messages.", deleted, failed)
+	report := fmt.Sprintf("🧹 Purge partially completed: deleted %d message(s); %d message ID(s) could not be deleted. Telegram may reject messages older than 48 hours, missing IDs, or otherwise non-deletable messages.%s", deleted, failed, auditWarning(auditErr))
 	_, err = b.SendMessage(chatID, report, nil)
 	return err
 }
