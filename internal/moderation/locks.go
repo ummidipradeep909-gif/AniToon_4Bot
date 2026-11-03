@@ -159,6 +159,10 @@ func changeChatLock(b *gotgbot.Bot, c *ext.Context, pool *pgxpool.Pool, locking 
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil { return reply(b, c, "I couldn't access this group's lock settings.") }
 	defer tx.Rollback(ctx)
+	// Serialize lock changes per chat, including the first lock when no row exists yet.
+	if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, chatID); err != nil {
+		return reply(b, c, "I couldn't safely coordinate this group's lock update.")
+	}
 
 	if _, err = tx.Exec(ctx, `INSERT INTO chats (chat_id) VALUES ($1) ON CONFLICT (chat_id) DO NOTHING`, chatID); err != nil {
 		return reply(b, c, "I couldn't prepare this group's lock settings.")
