@@ -9,7 +9,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Initial durable schema
 - [x] CI checks for Go and Python
 
-## Moderation core
+## Clone bot system\n- [x] Main-bot /clone onboarding and BotFather link\n- [x] Private token message deletion and Telegram getMe validation\n- [x] Start one clone per owner on shared dispatcher (in-memory only; restart reconnect required)\n- [ ] Encrypted persistent token storage and clone recovery\n- [ ] Per-clone lifecycle controls, quotas and isolation\n\n## Moderation core
 - [x] Shared actor-admin and bot-permission checks (initial command-level implementation)
 - [x] Reply/ID target resolver and protected-target checks
 - [x] Ban and unban command handlers (audit persistence and integration tests remain required)
