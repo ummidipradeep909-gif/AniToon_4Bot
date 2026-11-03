@@ -23,7 +23,7 @@ func Kick(b *gotgbot.Bot, ctx *ext.Context) error {
 	if err != nil {
 		return reply(b, ctx, "Usage: reply with /kick [reason], or /kick <user_id> [reason]. "+err.Error())
 	}
-	if b.User != nil && targetID == b.User.Id { return reply(b, ctx, "I cannot kick myself.") }
+	if targetID == b.User.Id { return reply(b, ctx, "I cannot kick myself.") }
 	if err = RequireTargetIsModeratable(b, chatID, targetID); err != nil { return reply(b, ctx, err.Error()) }
 
 	banned, err := b.BanChatMember(chatID, targetID, &gotgbot.BanChatMemberOpts{RevokeMessages: false})
