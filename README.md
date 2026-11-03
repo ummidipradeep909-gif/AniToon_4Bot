@@ -106,7 +106,7 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Slow mode, filters, notes, welcome/goodbye, reports, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap.  The Python policy endpoint is telemetry only and does not automatically punish users.
+Slow mode, filters, notes, welcome/goodbye, reports, encrypted clone credential persistence, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
