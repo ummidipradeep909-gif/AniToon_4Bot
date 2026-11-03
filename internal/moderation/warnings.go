@@ -53,7 +53,9 @@ func warnMember(b *gotgbot.Bot,c *ext.Context,pool *pgxpool.Pool) error {
  if err=pool.QueryRow(ctx,`SELECT COUNT(*) FROM chat_warnings WHERE chat_id=$1 AND user_id=$2`,chatID,targetID).Scan(&count); err!=nil {
   return reply(b,c,"Warning was saved, but I couldn't retrieve the updated count.")
  }
+ auditErr:=writeModerationAudit(b.User.Id,chatID,actor,targetID,"warn",reason,nil)
  result:=fmt.Sprintf("⚠️ User %d has been warned.\nWarnings: %d/3\nReason: %s",targetID,count,reason)
+ result+=auditWarning(auditErr)
  if count>=3 { result+="\n⚠️ Warning limit reached. An administrator should review this member; no automatic punishment has been applied." }
  return reply(b,c,result)
 }
