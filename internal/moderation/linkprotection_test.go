@@ -41,6 +41,7 @@ func TestTelegramInviteDetection(t *testing.T) {
 		"https://t.me/+AbCd123",
 		"t.me/joinchat/abc",
 		"https://telegram.me/addlist/abc",
+		"tg://join?invite=AbCd123",
 	} {
 		if !isTelegramInviteLink(link) {
 			t.Errorf("expected invite link to be blocked: %s", link)
