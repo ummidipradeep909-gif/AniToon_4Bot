@@ -112,7 +112,7 @@ Apply `migrations/006_slowmode.sql` to existing databases. New Docker-managed da
 - Domain matching includes subdomains. Admins and bots are exempt. The bot needs Delete messages and PostgreSQL.
 - If settings or allowlist storage cannot be verified, the handler fails open and does not delete messages.
 
-Apply `migrations/007_link_protection.sql and migrations/008_forward_protection.sql and migrations/009_keyword_blacklist.sql` to existing databases. New Docker-managed databases run it during initialisation.
+For existing databases, apply these migrations individually and in order: `psql "$DATABASE_URL" -f migrations/007_link_protection.sql`, then `psql "$DATABASE_URL" -f migrations/008_forward_protection.sql`, then `psql "$DATABASE_URL" -f migrations/009_keyword_blacklist.sql`. New Docker-managed databases run migration SQL files during initialisation.
 
 ## Forward protection
 
@@ -170,7 +170,7 @@ Filters, notes, welcome/goodbye, reports, encrypted clone credential persistence
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL and REDIS_URL (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql, migrations/003_antiflood.sql, migrations/004_antiraid.sql, migrations/005_moderation_audit_bot_id.sql and migrations/006_slowmode.sql, migrations/007_link_protection.sql, migrations/008_forward_protection.sql and migrations/009_keyword_blacklist.sql in order to enable group locks, anti-flood, anti-raid, bot-scoped moderation logs and link protection.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/009_keyword_blacklist.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
