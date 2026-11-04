@@ -267,3 +267,8 @@ See docs/ROADMAP.md and docs/architecture/DECISIONS.md for implementation status
 ## Production deployment profile
 
 A hardened single-host Docker Compose profile is available in [`compose.production.yaml`](compose.production.yaml). Copy [`.env.production.example`](.env.production.example) to `.env.production`, replace every placeholder with unique secrets, and follow [`docs/operations/PRODUCTION_DEPLOYMENT.md`](docs/operations/PRODUCTION_DEPLOYMENT.md). Never commit `.env.production`. The production profile keeps PostgreSQL and Redis private, enables Redis authentication, runs the bot and policy service as non-root users, and applies container hardening. Clone encryption-key rotation is deliberately not automated yet: changing `CLONE_ENCRYPTION_KEY` without a tested re-encryption migration makes saved clone credentials unrecoverable.
+
+
+## Production credential rotation
+
+For the production Compose profile, PostgreSQL and Redis passwords can be rotated during a planned maintenance window using the [credential rotation runbook](docs/operations/CREDENTIAL_ROTATION.md). The procedure explicitly changes the existing PostgreSQL role password (not just the Compose initialization variable), updates both application connection URLs, verifies Redis authentication and documents rollback. It causes a brief service interruption; it is not zero-downtime rotation. Never change `CLONE_ENCRYPTION_KEY` as part of this procedure.
