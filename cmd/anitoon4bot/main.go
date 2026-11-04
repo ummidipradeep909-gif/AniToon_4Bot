@@ -83,6 +83,7 @@ func main() {
  moderation.RegisterBlacklistCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterGreetingCommands(dispatcher,db)
  moderation.RegisterRulesCommands(dispatcher,db)
+ moderation.RegisterCommunityCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,os.Getenv("CLONE_ENCRYPTION_KEY"))
  cloneManager.Register(dispatcher)
  recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),30*time.Second)
