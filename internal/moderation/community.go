@@ -234,7 +234,7 @@ func (s *communityService) handleFilter(b *gotgbot.Bot,c *ext.Context) error {
 	for rows.Next(){
 		var trigger,response string
 		if rows.Scan(&trigger,&response)!=nil{return nil}
-		if strings.EqualFold(strings.TrimSpace(text),trigger){
+		if matchesCustomFilter(text,trigger){
 			_,_ = b.SendMessage(m.Chat.Id,response,nil)
 			return nil
 		}
