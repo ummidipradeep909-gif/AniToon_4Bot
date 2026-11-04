@@ -18,6 +18,7 @@ func TestLoadDefaults(t *testing.T) {
 	t.Setenv("BOT_TOKEN", "123456:testing-token")
 	t.Setenv("BOT_MODE", "")
 	t.Setenv("LOG_LEVEL", "")
+	t.Setenv("PORT", "")
 	got, err := Load()
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
@@ -62,6 +63,7 @@ func TestLoadWebhookDefaultsAndValidation(t *testing.T) {
 	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
 	t.Setenv("WEBHOOK_PATH", "")
 	t.Setenv("WEBHOOK_LISTEN_ADDR", "")
+	t.Setenv("PORT", "")
 	t.Setenv("WEBHOOK_SECRET_TOKEN", "secret_token-123")
 	got, err := Load()
 	if err != nil { t.Fatalf("Load() error = %v", err) }
