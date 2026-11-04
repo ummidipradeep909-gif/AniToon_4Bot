@@ -187,8 +187,11 @@ func (s *communityService) filterCommand(b *gotgbot.Bot, c *ext.Context) error {
 	if action != "add" { return reply(b, c, "Usage: /filter add <trigger> <response> or /filter remove <trigger>") }
 	if len(fields) < 3 { return reply(b, c, "Usage: /filter add <trigger> <response>") }
 	// Keep spaces and line breaks in the response rather than joining tokens.
-	responseStart := strings.Index(raw, fields[1]) + len(fields[1])
-	response, err := validateFilterResponse(strings.TrimSpace(raw[responseStart:]))
+	afterAction := strings.TrimSpace(strings.TrimPrefix(raw, fields[0]))
+	triggerStart := strings.Index(afterAction, fields[1])
+	if triggerStart < 0 { return reply(b, c, "Usage: /filter add <trigger> <response>") }
+	responseStart := triggerStart + len(fields[1])
+	response, err := validateFilterResponse(strings.TrimSpace(afterAction[responseStart:]))
 	if err != nil { return reply(b, c, err.Error()) }
 	if err = s.ensureChat(ctx, chatID); err == nil {
 		var count int
