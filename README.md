@@ -277,3 +277,8 @@ For the production Compose profile, PostgreSQL and Redis passwords can be rotate
 ## Docker Secrets and file-based credentials
 
 Legacy environment-variable deployments remain supported. Go and Python services also support `NAME_FILE` settings for read-only mounted secrets. See [Docker Secrets deployment](docs/operations/DOCKER_SECRETS.md) for the Compose overlay, required secret files, permissions, compatibility, and rollback. Required bot, database, Redis, and clone-encryption credentials are validated at startup; database/cache connection failures stop the bot. Never regenerate the existing `CLONE_ENCRYPTION_KEY`.
+
+
+## Clone health monitoring
+
+Enabled clones are reconciled automatically, with safe health states and capped retry backoff. See [clone health monitoring](docs/operations/CLONE_HEALTH_MONITORING.md). Multi-instance lease coordination remains a separate deployment requirement.

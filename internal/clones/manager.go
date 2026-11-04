@@ -27,6 +27,7 @@ type Manager struct {
 	owners map[int64]int64
 	active map[int64]bool
 	bots map[int64]*gotgbot.Bot
+	health map[int64]cloneHealth
 	maxClones int
 	logger *slog.Logger
 	store credentialStore
@@ -39,7 +40,7 @@ func NewManager(updater *ext.Updater, primaryID int64, logger *slog.Logger, db *
 	if keyErr != nil { key = nil }
 	return &Manager{
 		updater: updater, primaryID: primaryID, pending: map[int64]time.Time{},
-		owners: map[int64]int64{}, active: map[int64]bool{}, bots: map[int64]*gotgbot.Bot{}, maxClones: cloneQuotaFromEnv(), logger: logger,
+		owners: map[int64]int64{}, active: map[int64]bool{}, bots: map[int64]*gotgbot.Bot{}, health: map[int64]cloneHealth{}, maxClones: cloneQuotaFromEnv(), logger: logger,
 		store: credentialStore{db: db}, key: key,
 	}
 }
@@ -173,6 +174,7 @@ func (m *Manager) connectNew(token string, owner int64) (*gotgbot.User, error) {
 	}
 	m.active[clone.User.Id] = true
 	m.bots[clone.User.Id] = clone
+	now := time.Now(); m.health[clone.User.Id] = cloneHealth{Status:"healthy", LastChecked:now, LastHealthy:now}
 	m.owners[owner] = clone.User.Id
 	m.logger.Info("clone bot connected", "bot_id", clone.User.Id, "owner_id", owner)
 	u := clone.User
@@ -279,6 +281,9 @@ func (m *Manager) Status(b *gotgbot.Bot, c *ext.Context) error {
 	state:="paused"; if row.Enabled { state="active" }
 	m.mu.Lock(); running:=m.active[botID]; m.mu.Unlock()
 	if running { state="running" }
+	health:=m.healthSnapshot(botID)
+	if row.Enabled && !running { state=cloneDisplayStatus(row.Enabled,running,health) }
+	if row.Enabled && running && health.Status=="degraded" { state="degraded" }
 	_,err=b.SendMessage(c.EffectiveChat.Id,fmt.Sprintf("Clone bot ID: %d\nStatus: %s\nQuota: %d total registered clones",botID,state,m.maxClones),nil)
 	return err
 }
@@ -326,6 +331,7 @@ func (m *Manager) Resume(b *gotgbot.Bot, c *ext.Context) error {
 	err=m.store.setEnabled(ctx,botID,owner,true); cancel()
 	if err!=nil { _=m.updater.StopBot(clone.Token); m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't save the resumed state. Your clone was stopped again.",nil); return sendErr }
 	m.active[botID]=true; m.bots[botID]=clone
+	now:=time.Now(); m.health[botID]=cloneHealth{Status:"healthy",LastChecked:now,LastHealthy:now}
 	m.mu.Unlock()
 	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is running again.",nil)
 	return err
@@ -348,7 +354,7 @@ func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
 		_,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't remove the saved clone. I attempted to restore its previous running state.",nil)
 		return sendErr
 	}
-	delete(m.active,botID); delete(m.bots,botID); delete(m.owners,owner)
+	delete(m.active,botID); delete(m.bots,botID); delete(m.owners,owner); delete(m.health,botID)
 	m.mu.Unlock()
 	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone has been removed and its encrypted credentials deleted. To create another, use /clone.",nil)
 	return err
