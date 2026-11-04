@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/jackc/pgx/v5"
@@ -32,10 +33,11 @@ type floodService struct {
 	redis *redis.Client
 	mu sync.RWMutex
 	adminCache map[string]floodAdminCacheEntry
+	ai *aiassistant.Client
 }
 
-func RegisterAntiFloodCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *redis.Client) {
-	s := &floodService{db: pool, redis: client, adminCache: make(map[string]floodAdminCacheEntry)}
+func RegisterAntiFloodCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *redis.Client, aiClient *aiassistant.Client) {
+	s := &floodService{db: pool, redis: client, adminCache: make(map[string]floodAdminCacheEntry), ai: aiClient}
 	d.AddHandler(handlers.NewCommand("setflood", func(b *gotgbot.Bot, c *ext.Context) error { return s.setConfig(b,c) }))
 	d.AddHandler(handlers.NewCommand("flood", func(b *gotgbot.Bot, c *ext.Context) error { return s.showConfig(b,c) }))
 	d.AddHandler(handlers.NewCommand("clearflood", func(b *gotgbot.Bot, c *ext.Context) error { return s.clearConfig(b,c) }))
@@ -169,7 +171,23 @@ func (s *floodService) handleMessage(b *gotgbot.Bot,c *ext.Context) error {
 		now.Add(-time.Duration(cfg.WindowSeconds)*time.Second).UnixMilli(),now.UnixMilli(),
 		fmt.Sprintf("%d:%d",m.MessageId,now.UnixNano()),cfg.WindowSeconds*1000).Int64()
 	if err!=nil || count<=int64(cfg.Limit) { return nil }
-	// Remove every over-limit message where permitted; apply mute/ban at most once per minute.
+	// AI is advisory only: it can flag a burst for admins, but never changes the
+	// configured flood action or performs moderation itself.
+	if s.ai != nil && (strings.TrimSpace(m.Text) != "" || strings.TrimSpace(m.Caption) != "") {
+		claimKey := fmt.Sprintf("anitoon4:ai-flood-review:%d:%d:%d", b.User.Id, chatID, userID)
+		claimed, claimErr := s.redis.SetNX(ctx, claimKey, "1", time.Minute).Result()
+		if claimErr == nil && claimed {
+			messageText := m.Text
+			if messageText == "" { messageText = m.Caption }
+			aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Second)
+			analysis, aiErr := s.ai.Analyze(aiCtx, chatID, userID, m.MessageId, "anti_flood", messageText)
+			aiCancel()
+			if aiErr == nil && analysis.Recommendation == "admin_review" {
+				_, _ = b.SendMessage(chatID, fmt.Sprintf("🤖 AI review suggestion: possible %s (confidence %.0f%%). Please review the recent message from user %d. AI did not take action.", analysis.Category, analysis.Confidence*100, userID), nil)
+			}
+		}
+	}
+	// Existing administrator-configured anti-flood action remains authoritative.
 	_, deleteErr := b.DeleteMessage(chatID,m.MessageId,nil)
 	if cfg.Action=="delete" { return deleteErr }
 	claimed,err:=s.redis.SetNX(ctx,floodActionKey(b.User.Id,chatID,userID),"1",time.Minute).Result()
