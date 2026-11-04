@@ -1,6 +1,7 @@
 package moderation
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -29,4 +30,12 @@ func TestRenderGreetingEscapesUserAndChatContent(t *testing.T) {
 		if !strings.Contains(got,want) {t.Fatalf("rendered greeting missing %q: %s",want,got)}
 	}
 	if strings.Contains(got,"<Alice>") || strings.Contains(got,"<group>") {t.Fatalf("unsafe unescaped content: %s",got)}
+}
+
+func TestGreetingMigrationIsPerBotAndGroup(t *testing.T) {
+	sql,err:=os.ReadFile("../../migrations/011_greetings.sql")
+	if err!=nil {t.Fatal(err)}
+	for _,fragment:=range []string{"PRIMARY KEY (bot_id, chat_id)","welcome_enabled BOOLEAN","goodbye_enabled BOOLEAN","welcome_template TEXT","goodbye_template TEXT","REFERENCES chats(chat_id) ON DELETE CASCADE"} {
+		if !strings.Contains(string(sql),fragment) {t.Fatalf("greeting migration missing %q",fragment)}
+	}
 }
