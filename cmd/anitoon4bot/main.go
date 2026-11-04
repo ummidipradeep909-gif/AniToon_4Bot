@@ -77,7 +77,7 @@ func main() {
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
  aiClient := aiassistant.NewClient(os.Getenv("POLICY_SERVICE_URL"), os.Getenv("AI_SERVICE_TOKEN"))
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient,aiClient)
- moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
+ moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db)
  moderation.RegisterForwardProtectionCommands(dispatcher,db)
  moderation.RegisterBlacklistCommands(dispatcher,db)
