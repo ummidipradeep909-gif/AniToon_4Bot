@@ -31,17 +31,31 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, and starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode handlers.
 
-Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported in this first version. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
+Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported. PostgreSQL enforces one row per owner and one owner per bot ID. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
-### Clone hosting and credential limitations
+### Persistent clone credentials and recovery
 
-- Tokens are held in process memory by the live bot client. They are not stored in PostgreSQL and are never written to logs or echoed in replies.
-- Clone connections are lost when the service restarts; the owner must run /clone again to reconnect.
+- Clone tokens are encrypted with AES-256-GCM before PostgreSQL storage. The table stores ciphertext and a fresh random 12-byte nonce only; plaintext tokens are never stored or logged.
+- The bot ID and owner ID are authenticated as AES-GCM additional authenticated data. Changing either identity makes decryption fail.
+- PostgreSQL enforces one clone per owner (`UNIQUE(owner_id)`) and one owner per clone bot (`PRIMARY KEY(bot_id)`). The primary AniToon_4Bot is never stored as a user's clone.
+- New clones are validated with Telegram first, persisted before polling starts, and removed from storage if polling cannot start. A database failure never starts an unpersisted clone.
+- At startup, saved credentials are decrypted, revalidated with Telegram and restarted independently. A failed clone recovery is logged by numeric IDs only and does not prevent the main bot from starting.
+- New clone creation is refused unless both PostgreSQL and a valid encryption key are available. The main bot can still start when either is unavailable; clone recovery is skipped in that case.
 - The clone's existing webhook must be removed before connection. If another host is polling the bot, stop it first.
-- This is an initial single-process clone runner, not a production multi-tenant hosting platform. Encrypted persistent token storage, per-owner quotas, clone lifecycle controls, and isolation/rate limits are not implemented yet.
+- This remains a single-process clone runner, not a multi-instance hosting platform. Per-clone lifecycle controls, quotas, and rate-limit isolation are not implemented.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
+
+**Encryption key setup (required for persistent clones):**
+
+Generate the key once:
+
+`openssl rand -base64 32`
+
+Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
+
+Apply `migrations/010_clone_credentials.sql` to existing databases before deploying this version. New Docker-managed databases run it during initialisation.
 
 ## Purge and delete commands
 
@@ -169,8 +183,8 @@ Filters, notes, welcome/goodbye, reports, encrypted clone credential persistence
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
-1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL and REDIS_URL (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/009_keyword_blacklist.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
+1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL, REDIS_URL and CLONE_ENCRYPTION_KEY (generate the latter with `openssl rand -base64 32` and keep it stable/backed up) (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/010_clone_credentials.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
@@ -179,7 +193,7 @@ The Go module uses gotgbot v2.0.0-rc.37. GitHub Actions runs Go and Python check
 ## Security
 
 - Never commit bot tokens or credentials.
-- Clone token messages are deleted before validation; token strings are never logged or echoed.
+- Clone token messages are deleted before validation; tokens are encrypted with AES-256-GCM at rest and never logged or echoed. Back up the stable `CLONE_ENCRYPTION_KEY`; losing it makes saved clone tokens unrecoverable.
 - Fail closed if administrator or bot permissions cannot be verified.
 - Protect group creators and administrators from routine moderation.
 - Keep untrusted user-provided reasons as plain text.
