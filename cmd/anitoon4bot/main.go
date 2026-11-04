@@ -3,7 +3,7 @@ package main
 import (
  "context"
  "log/slog"
- "os"
+ "os"\n "os/signal"\n "syscall"
  "time"
 
  "github.com/PaulSonOfLars/gotgbot/v2"
@@ -103,10 +103,59 @@ func main() {
  cloneManager.Recover(recoveryCtx)
  recoveryCancel()
 
- logger.Info("AniToon_4Bot starting","username",b.User.Username)
- if err:=updater.StartPolling(b,&ext.PollingOpts{
-  DropPendingUpdates:false,
-  GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,AllowedUpdates:[]string{"message","chat_member"},RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}},
- }); err!=nil { logger.Error("polling stopped","error",err); os.Exit(1) }
- updater.Idle()
+ logger.Info("AniToon_4Bot starting","username",b.User.Username,"mode",cfg.Mode)
+ if cfg.Mode=="webhook" {
+  if err:=updater.StartWebhook(b,cfg.WebhookPath,ext.WebhookOpts{
+   ListenAddr:cfg.WebhookListenAddr,
+   ReadHeaderTimeout:10*time.Second,
+   ReadTimeout:15*time.Second,
+   SecretToken:cfg.WebhookSecretToken,
+  }); err!=nil {
+   logger.Error("webhook server failed to start","error",err)
+   if db!=nil { db.Close() }; if redisClient!=nil { redisClient.Close() }
+   os.Exit(1)
+  }
+  webhookURL:=cfg.WebhookURL+cfg.WebhookPath
+  if _,err:=b.SetWebhook(webhookURL,&gotgbot.SetWebhookOpts{
+   SecretToken:cfg.WebhookSecretToken,
+   AllowedUpdates:[]string{"message","chat_member"},
+  }); err!=nil {
+   logger.Error("Telegram webhook registration failed","error",err)
+   _=updater.Stop()
+   if db!=nil { db.Close() }; if redisClient!=nil { redisClient.Close() }
+   os.Exit(1)
+  }
+  logger.Info("Telegram webhook registered","listen_addr",cfg.WebhookListenAddr,"path",cfg.WebhookPath)
+ } else {
+  if err:=updater.StartPolling(b,&ext.PollingOpts{
+   DropPendingUpdates:false,
+   GetUpdatesOpts:&gotgbot.GetUpdatesOpts{Timeout:30,AllowedUpdates:[]string{"message","chat_member"},RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}},
+  }); err!=nil {
+   logger.Error("polling failed to start","error",err)
+   if db!=nil { db.Close() }; if redisClient!=nil { redisClient.Close() }
+   os.Exit(1)
+  }
+ }
+ signalCtx,stopSignals:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
+ defer stopSignals()
+ idleDone:=make(chan struct{})
+ go func(){ updater.Idle(); close(idleDone) }()
+ <-signalCtx.Done()
+ logger.Info("shutdown signal received; stopping updates")
+ shutdownCtx,shutdownCancel:=context.WithTimeout(context.Background(),20*time.Second)
+ defer shutdownCancel()
+ stopped:=make(chan error,1)
+ go func(){ stopped<-updater.Stop() }()
+ select {
+ case stopErr:=<-stopped:
+  if stopErr!=nil { logger.Error("updater shutdown failed","error",stopErr) }
+ case <-shutdownCtx.Done():
+  logger.Error("updater shutdown timed out")
+ }
+ select {
+ case <-idleDone:
+ case <-shutdownCtx.Done():
+  logger.Error("updater idle loop did not stop before deadline")
+ }
+ logger.Info("AniToon_4Bot shutdown complete")
 }
