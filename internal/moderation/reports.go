@@ -9,7 +9,6 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
-	"github.com/jackc/pgx/v5"
 )
 
 func RegisterReportCommands(d *ext.Dispatcher) {
@@ -84,7 +83,7 @@ func ReportNotify(b *gotgbot.Bot,c *ext.Context) error {
 	return reply(b,c,"Moderation event notifications are now disabled for this bot in this group.")
 }
 
-func notifyModerationEvent(botID,chatID,targetID int64,action string) {
+func notifyModerationEvent(b *gotgbot.Bot,botID,chatID,targetID int64,action string) {
 	if auditPool==nil{return}
 	ctx,cancel:=context.WithTimeout(context.Background(),2*time.Second);defer cancel()
 	var enabled bool
