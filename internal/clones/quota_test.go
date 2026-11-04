@@ -1,7 +1,6 @@
 package clones
 
 import (
-	"os"
 	"testing"
 )
 
@@ -26,5 +25,4 @@ func TestCloneQuotaFromEnv(t *testing.T) {
 			}
 		})
 	}
-	_ = os.Unsetenv("CLONE_MAX_BOTS")
 }
