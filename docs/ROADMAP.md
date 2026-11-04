@@ -17,7 +17,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] PostgreSQL uniqueness for clone owner and bot ID
 - [x] Startup credential decryption, Telegram validation and per-clone recovery isolation
 - [x] Refuse clone creation when PostgreSQL or the stable encryption key is unavailable
-- [ ] Per-clone lifecycle controls, quotas and isolation
+- [x] Owner-only per-clone status, pause, resume and removal controls with persistent state, atomic shared quota and independent polling isolation
 
 ## Moderation core
 - [x] Shared actor-admin and bot-permission checks (initial command-level implementation)
@@ -45,6 +45,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] AI-assisted anti-flood review (admin suggestion only)
 - [x] AI-assisted anti-raid review using aggregate join telemetry
 - [x] AI-assisted phishing review for blocked links (admin suggestion only)
+- [x] AI-assisted contextual keyword blacklist review with evasion candidates and Redis cooldown (admin suggestion only)
 - [ ] Notes and custom filters
 - [ ] Reports and admin notifications
 - [ ] User information and admin list

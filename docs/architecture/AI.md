@@ -27,9 +27,16 @@ The endpoint rejects calls without the service-token header.
 - **Link protection:** deterministic allowlist and invite-link rules run first. For
   blocked links, AI reviews extracted hostnames and a message snippet with URLs redacted.
   It never fetches URLs, and its phishing warning is advisory only.
+- **Keyword blacklist:** exact case-insensitive substring matches retain their existing
+  delete/warn behaviour. Formatting and common leetspeak variants can trigger a separate
+  advisory review; AI distinguishes likely evasion from benign quotations, education and
+  discussion. A per-bot/group/user Redis cooldown limits calls. AI never changes the
+  deterministic match or takes a Telegram moderation action.
 
 Redis cooldowns limit repeated requests. AI timeouts and provider failures must not
-disable the existing deterministic moderation behaviour.
+disable the existing deterministic moderation behaviour. Blacklist review is advisory
+and currently has no group-level opt-in; avoid enabling provider analysis in groups where
+message text should not be sent to the configured AI provider.
 
 ## API and safety
 
