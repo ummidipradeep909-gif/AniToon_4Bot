@@ -53,7 +53,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Operations
 - [x] Admin-only aggregate moderation metrics by day/week/month from confirmed audit records (automated protection-event telemetry remains separate)
 - [x] PostgreSQL backup/restore guide covering encrypted dumps, clone-key escrow, isolated restore validation, migrations and rollback
-- [ ] Migration runner
+- [x] Embedded PostgreSQL migration runner with numeric ordering, transactional execution, advisory locking, checksum/history validation, startup fail-fast behavior and PostgreSQL integration tests
 - [ ] Webhook mode and graceful shutdown
 - [ ] Load, abuse and recovery tests
 - [ ] Production deployment profiles and secret rotation
