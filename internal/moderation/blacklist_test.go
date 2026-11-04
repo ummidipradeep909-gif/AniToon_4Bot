@@ -27,3 +27,30 @@ func TestContainsBlacklistPhrase(t *testing.T) {
 		if got:=containsBlacklistPhrase(tc.text,tc.phrase);got!=tc.want {t.Errorf("contains(%q,%q)=%v want %v",tc.text,tc.phrase,got,tc.want)}
 	}
 }
+
+func TestBlacklistReviewCandidate(t *testing.T) {
+	tests := []struct {
+		text, phrase string
+		want bool
+	}{
+		{"b.a.d w.o.r.d", "bad word", true},
+		{"b4d w0rd", "bad word", true},
+		{"BAD WORD", "bad word", true},
+		{"ordinary conversation", "bad word", false},
+		{"", "bad word", false},
+	}
+	for _, tc := range tests {
+		if got := blacklistReviewCandidate(tc.text, tc.phrase); got != tc.want {
+			t.Errorf("blacklistReviewCandidate(%q, %q) = %v, want %v", tc.text, tc.phrase, got, tc.want)
+		}
+	}
+}
+
+func TestBlacklistAIReviewKeyIsolatedByBotChatAndUser(t *testing.T) {
+	base := blacklistAIReviewKey(1, 2, 3)
+	if base == blacklistAIReviewKey(9, 2, 3) ||
+		base == blacklistAIReviewKey(1, 8, 3) ||
+		base == blacklistAIReviewKey(1, 2, 7) {
+		t.Fatal("AI cooldown keys must be isolated by bot, group, and user")
+	}
+}
