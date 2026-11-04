@@ -7,7 +7,6 @@ class Settings(BaseSettings):
     policy_service_port: int = 8000
     ai_enabled: bool = False
     ai_provider: str = "openai"
-    ai_service_token: str = ""
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     ai_timeout_seconds: float = 12.0
