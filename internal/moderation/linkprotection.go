@@ -268,6 +268,13 @@ func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error 
 		if !domainAllowed(host, allowedDomains) { blocked = true }
 		suspicious = append(suspicious, host)
 	}
+	// Enforce the existing deterministic link policy first. AI is an optional
+	// advisory step and must never delay or control message deletion.
+	if blocked {
+		if _, deleteErr := b.DeleteMessage(chatID, m.MessageId, nil); deleteErr != nil {
+			return deleteErr
+		}
+	}
 	// AI checks only extracted hostnames and a redacted message snippet. It never
 	// fetches a URL, and its advisory result cannot override the deterministic policy.
 	if s.ai != nil && blocked && len(suspicious) > 0 {
@@ -283,7 +290,5 @@ func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error 
 			}
 		}
 	}
-	if !blocked { return nil }
-	_, deleteErr := b.DeleteMessage(chatID, m.MessageId, nil)
-	return deleteErr
+	return nil
 }
