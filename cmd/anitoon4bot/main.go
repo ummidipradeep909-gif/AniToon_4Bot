@@ -15,7 +15,8 @@ import (
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/config"
- "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/moderation"\n "github.com/ummidipradeep909-gif/AniToon_4Bot/migrations"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/moderation"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/migrations"
 )
 
 func main() {
