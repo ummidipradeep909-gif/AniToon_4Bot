@@ -41,6 +41,8 @@ func TestRaidKeysAreScopedToBotAndChat(t *testing.T) {
 	base:=raidCounterKey(1,2)
 	if base==raidCounterKey(3,2) || base==raidCounterKey(1,4) { t.Fatal("raid counters must be isolated by bot and chat") }
 	if raidAlertKey(1,2)==raidAlertKey(1,3) { t.Fatal("alert cooldown must be isolated by chat") }
+	if raidAIReviewKey(1,2)==raidAIReviewKey(1,3) { t.Fatal("AI review cooldown must be isolated by chat") }
+	if raidAIReviewKey(1,2)==raidAIReviewKey(2,2) { t.Fatal("AI review cooldown must be isolated by bot") }
 	if raidQuarantineKey(1,2,3)==raidQuarantineKey(1,2,4) { t.Fatal("quarantine markers must be isolated by member") }
 }
 
