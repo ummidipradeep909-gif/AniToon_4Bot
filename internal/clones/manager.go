@@ -2,8 +2,11 @@ package clones
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +26,8 @@ type Manager struct {
 	pending map[int64]time.Time
 	owners map[int64]int64
 	active map[int64]bool
+	bots map[int64]*gotgbot.Bot
+	maxClones int
 	logger *slog.Logger
 	store credentialStore
 	key []byte
@@ -34,9 +39,16 @@ func NewManager(updater *ext.Updater, primaryID int64, logger *slog.Logger, db *
 	if keyErr != nil { key = nil }
 	return &Manager{
 		updater: updater, primaryID: primaryID, pending: map[int64]time.Time{},
-		owners: map[int64]int64{}, active: map[int64]bool{}, logger: logger,
+		owners: map[int64]int64{}, active: map[int64]bool{}, bots: map[int64]*gotgbot.Bot{}, maxClones: cloneQuotaFromEnv(), logger: logger,
 		store: credentialStore{db: db}, key: key,
 	}
+}
+
+func cloneQuotaFromEnv() int {
+	const defaultQuota = 100
+	value, err := strconv.Atoi(os.Getenv("CLONE_MAX_BOTS"))
+	if err != nil || value < 1 || value > 10000 { return defaultQuota }
+	return value
 }
 
 func (m *Manager) persistenceReady() bool { return m.store.db != nil && len(m.key) == 32 }
@@ -44,6 +56,10 @@ func (m *Manager) persistenceReady() bool { return m.store.db != nil && len(m.ke
 func (m *Manager) Register(d *ext.Dispatcher) {
 	d.AddHandler(handlers.NewCommand("clone", m.Begin))
 	d.AddHandler(handlers.NewCommand("cancel", m.Cancel))
+	d.AddHandler(handlers.NewCommand("clonestatus", m.Status))
+	d.AddHandler(handlers.NewCommand("clonepause", m.Pause))
+	d.AddHandler(handlers.NewCommand("cloneresume", m.Resume))
+	d.AddHandler(handlers.NewCommand("cloneremove", m.Remove))
 	d.AddHandler(handlers.NewMessage(nil, m.ReceiveToken))
 }
 
@@ -119,7 +135,9 @@ func (m *Manager) ReceiveToken(b *gotgbot.Bot, c *ext.Context) error {
 	token = ""
 	m.mu.Lock(); delete(m.pending, owner); m.mu.Unlock()
 	if err != nil {
-		_, e := b.SendMessage(c.EffectiveChat.Id, "I couldn't connect that bot. Check the token and make sure it isn't running on another host, then send /clone to try again. Your token message was deleted.", nil)
+		message := "I couldn't connect that bot. Check the token and make sure it isn't running on another host, then send /clone to try again. Your token message was deleted."
+		if errors.Is(err, errCloneQuotaReached) { message = "The shared clone quota is full right now. Your token message was deleted and no clone was started." }
+		_, e := b.SendMessage(c.EffectiveChat.Id, message, nil)
 		return e
 	}
 	_, e := b.SendMessage(c.EffectiveChat.Id, fmt.Sprintf("<b>Your AniToon clone is online!</b>\n\nBot: @%s\n\nOpen it and send /start. Add it to your group and promote it with the permissions needed for moderation.\n\nYour encrypted credentials are saved for automatic recovery after restarts.", user.Username), &gotgbot.SendMessageOpts{ParseMode: "HTML"})
@@ -143,8 +161,8 @@ func (m *Manager) connectNew(token string, owner int64) (*gotgbot.User, error) {
 	defer cancel()
 	ciphertext, nonce, err := encryptToken(m.key, clone.Token, clone.User.Id, owner)
 	if err != nil { return nil, fmt.Errorf("clone encryption failed") }
-	if err := m.store.insert(ctx, credential{BotID: clone.User.Id, OwnerID: owner, Ciphertext: ciphertext, Nonce: nonce}); err != nil {
-		return nil, fmt.Errorf("clone persistence failed")
+	if err := m.store.insert(ctx, credential{BotID: clone.User.Id, OwnerID: owner, Ciphertext: ciphertext, Nonce: nonce}, m.maxClones); err != nil {
+		return nil, err
 	}
 	if err := m.startPolling(clone); err != nil {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -154,6 +172,7 @@ func (m *Manager) connectNew(token string, owner int64) (*gotgbot.User, error) {
 		return nil, fmt.Errorf("clone polling failed")
 	}
 	m.active[clone.User.Id] = true
+	m.bots[clone.User.Id] = clone
 	m.owners[owner] = clone.User.Id
 	m.logger.Info("clone bot connected", "bot_id", clone.User.Id, "owner_id", owner)
 	u := clone.User
@@ -205,6 +224,13 @@ func (m *Manager) Recover(ctx context.Context) {
 			m.logger.Error("clone recovery skipped duplicate owner or bot record", "bot_id", row.BotID, "owner_id", row.OwnerID)
 			continue
 		}
+		if !row.Enabled {
+			m.owners[row.OwnerID] = row.BotID
+			m.bots[row.BotID] = clone
+			m.mu.Unlock()
+			m.logger.Info("clone bot recovered in paused state", "bot_id", row.BotID, "owner_id", row.OwnerID)
+			continue
+		}
 		if startErr := m.startPolling(clone); startErr != nil {
 			m.mu.Unlock()
 			m.logger.Error("clone recovery polling failed; primary bot will continue", "bot_id", row.BotID)
@@ -212,6 +238,7 @@ func (m *Manager) Recover(ctx context.Context) {
 		}
 		m.owners[row.OwnerID] = row.BotID
 		m.active[row.BotID] = true
+		m.bots[row.BotID] = clone
 		m.mu.Unlock()
 		m.logger.Info("clone bot recovered", "bot_id", row.BotID, "owner_id", row.OwnerID)
 	}
@@ -227,4 +254,102 @@ func RegisterCommands(d *ext.Dispatcher) {
 	d.AddHandler(handlers.NewCommand("mute", moderation.Mute))
 	d.AddHandler(handlers.NewCommand("unmute", moderation.Unmute))
 	d.AddHandler(handlers.NewCommand("kick", moderation.Kick))
+}
+
+
+// ownerClone resolves only the calling owner’s clone. Lifecycle commands are private-chat only.
+func (m *Manager) ownerClone(b *gotgbot.Bot, c *ext.Context) (int64, int64, error) {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveUser == nil || c.EffectiveMessage == nil || c.EffectiveChat.Type != "private" {
+		return 0, 0, fmt.Errorf("use this command in the main bot's private chat")
+	}
+	m.mu.Lock()
+	botID := m.owners[c.EffectiveUser.Id]
+	m.mu.Unlock()
+	if botID == 0 { return 0, 0, fmt.Errorf("you do not have a registered clone") }
+	return c.EffectiveUser.Id, botID, nil
+}
+
+func (m *Manager) Status(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
+	owner, botID, err := m.ownerClone(b,c)
+	if err != nil { _, sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
+	ctx,cancel:=context.WithTimeout(context.Background(),3*time.Second); defer cancel()
+	row,err:=m.store.getByOwner(ctx,owner)
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't read your clone status. Please try again later.",nil); return sendErr }
+	state:="paused"; if row.Enabled { state="active" }
+	m.mu.Lock(); running:=m.active[botID]; m.mu.Unlock()
+	if running { state="running" }
+	_,err=b.SendMessage(c.EffectiveChat.Id,fmt.Sprintf("Clone bot ID: %d\nStatus: %s\nQuota: %d total registered clones",botID,state,m.maxClones),nil)
+	return err
+}
+
+func (m *Manager) Pause(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
+	owner,botID,err:=m.ownerClone(b,c)
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
+	m.mu.Lock()
+	if !m.active[botID] { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is already paused.",nil); return err }
+	clone:=m.bots[botID]
+	if clone==nil || !m.updater.StopBot(clone.Token) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone. No status change was saved.",nil); return err }
+	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
+	err=m.store.setEnabled(ctx,botID,owner,false); cancel()
+	if err!=nil {
+		if restartErr:=m.startPolling(clone); restartErr==nil { m.active[botID]=true } else { m.active[botID]=false; m.logger.Error("clone restart failed after pause persistence error","bot_id",botID) }
+		m.mu.Unlock()
+		_,sendErr:=b.SendMessage(c.EffectiveChat.Id,"The pause could not be saved. I attempted to restore polling; check /clonestatus.",nil)
+		return sendErr
+	}
+	m.active[botID]=false
+	m.mu.Unlock()
+	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is paused. Use /cloneresume to start it again.",nil)
+	return err
+}
+
+func (m *Manager) Resume(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
+	owner,botID,err:=m.ownerClone(b,c)
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
+	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
+	row,err:=m.store.getByOwner(ctx,owner); cancel()
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't read your saved clone. Please try again later.",nil); return sendErr }
+	if row.Enabled && m.active[botID] { _,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is already running.",nil); return err }
+	token,err:=decryptToken(m.key,row.Ciphertext,row.Nonce,row.BotID,row.OwnerID)
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"Your saved clone credential could not be verified. Contact the operator.",nil); return sendErr }
+	clone,err:=gotgbot.NewBot(token,nil); token=""
+	if err!=nil || clone==nil || clone.User.Id!=botID { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"Telegram could not validate your saved clone. Please contact the operator.",nil); return sendErr }
+	webhook,err:=clone.GetWebhookInfo(nil)
+	if err!=nil || (webhook!=nil && webhook.Url!="") { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"Your clone webhook is active or Telegram is unavailable. I did not start polling.",nil); return sendErr }
+	m.mu.Lock()
+	if m.active[botID] { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is already running.",nil); return err }
+	if err=m.startPolling(clone); err!=nil { m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't resume polling. Your clone remains paused.",nil); return sendErr }
+	ctx,cancel=context.WithTimeout(context.Background(),5*time.Second)
+	err=m.store.setEnabled(ctx,botID,owner,true); cancel()
+	if err!=nil { _=m.updater.StopBot(clone.Token); m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't save the resumed state. Your clone was stopped again.",nil); return sendErr }
+	m.active[botID]=true; m.bots[botID]=clone
+	m.mu.Unlock()
+	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is running again.",nil)
+	return err
+}
+
+func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
+	owner,botID,err:=m.ownerClone(b,c)
+	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
+	m.mu.Lock()
+	clone:=m.bots[botID]
+	if m.active[botID] {
+		if clone==nil || !m.updater.StopBot(clone.Token) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone, so its credentials were retained.",nil); return err }
+	}
+	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
+	err=m.store.delete(ctx,botID); cancel()
+	if err!=nil {
+		if m.active[botID] && clone!=nil { if restartErr:=m.startPolling(clone); restartErr==nil { m.active[botID]=true } else { m.active[botID]=false } }
+		m.mu.Unlock()
+		_,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't remove the saved clone. I attempted to restore its previous running state.",nil)
+		return sendErr
+	}
+	delete(m.active,botID); delete(m.bots,botID); delete(m.owners,owner)
+	m.mu.Unlock()
+	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone has been removed and its encrypted credentials deleted. To create another, use /clone.",nil)
+	return err
 }
