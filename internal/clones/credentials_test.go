@@ -2,6 +2,7 @@ package clones
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -20,12 +21,16 @@ func TestPostgresCloneCredentialUniqueness(t *testing.T) {
 
 	migration, err := os.ReadFile("../../migrations/010_clone_credentials.sql")
 	if err != nil { t.Fatal(err) }
-	if _, err = conn.Exec(ctx, "CREATE TEMP TABLE migration_test_seed (id INTEGER)"); err != nil { t.Fatal(err) }
-	if _, err = conn.Exec(ctx, "SET search_path TO pg_temp"); err != nil { t.Fatal(err) }
-	if _, err = conn.Exec(ctx, string(migration)); err != nil { t.Fatalf("execute clone credential migration: %v", err) }
+	tx, err := conn.Begin(ctx)
+	if err != nil { t.Fatal(err) }
+	defer tx.Rollback(ctx)
+	schema := fmt.Sprintf("clone_credential_test_%d", os.Getpid())
+	if _, err = tx.Exec(ctx, "CREATE SCHEMA "+schema); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, "SET LOCAL search_path TO "+schema); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, string(migration)); err != nil { t.Fatalf("execute clone credential migration: %v", err) }
 
 	insert := `INSERT INTO clone_credentials (bot_id, owner_id, encrypted_token, nonce) VALUES ($1,$2,$3,$4)`
-	if _, err = conn.Exec(ctx, insert, int64(100), int64(200), []byte("cipher"), make([]byte,12)); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, insert, int64(100), int64(200), []byte("cipher"), make([]byte,12)); err != nil { t.Fatal(err) }
 	if _, err = conn.Exec(ctx, insert, int64(101), int64(200), []byte("cipher"), make([]byte,12)); err == nil {
 		t.Fatal("PostgreSQL accepted a second clone for the same owner")
 	}
