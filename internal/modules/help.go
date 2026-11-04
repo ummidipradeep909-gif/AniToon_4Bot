@@ -10,6 +10,10 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 <b>Clone setup (main bot private chat)</b>
 /clone — connect your own BotFather bot token
 /cancel — cancel clone setup
+/clonestatus — show your clone status
+/clonepause — pause your clone
+/cloneresume — resume your clone
+/cloneremove — permanently remove your clone
 
 <b>Moderation</b>
 /ban — ban a member (reply or numeric user ID)
