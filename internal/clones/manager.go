@@ -267,6 +267,7 @@ func (m *Manager) ownerClone(b *gotgbot.Bot, c *ext.Context) (int64, int64, erro
 }
 
 func (m *Manager) Status(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
 	owner, botID, err := m.ownerClone(b,c)
 	if err != nil { _, sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
 	ctx,cancel:=context.WithTimeout(context.Background(),3*time.Second); defer cancel()
@@ -280,6 +281,7 @@ func (m *Manager) Status(b *gotgbot.Bot, c *ext.Context) error {
 }
 
 func (m *Manager) Pause(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
 	owner,botID,err:=m.ownerClone(b,c)
 	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
 	m.mu.Lock()
@@ -301,6 +303,7 @@ func (m *Manager) Pause(b *gotgbot.Bot, c *ext.Context) error {
 }
 
 func (m *Manager) Resume(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
 	owner,botID,err:=m.ownerClone(b,c)
 	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
@@ -326,6 +329,7 @@ func (m *Manager) Resume(b *gotgbot.Bot, c *ext.Context) error {
 }
 
 func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
+	if b.User.Id != m.primaryID || c.EffectiveChat == nil || c.EffectiveChat.Type != "private" { return nil }
 	owner,botID,err:=m.ownerClone(b,c)
 	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,err.Error(),nil); return sendErr }
 	m.mu.Lock()
