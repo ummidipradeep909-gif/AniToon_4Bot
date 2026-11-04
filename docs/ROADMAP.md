@@ -18,7 +18,6 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Startup credential decryption, Telegram validation and per-clone recovery isolation
 - [x] Refuse clone creation when PostgreSQL or the stable encryption key is unavailable
 - [ ] Per-clone lifecycle controls, quotas and isolation
-- [ ] Per-clone lifecycle controls, quotas and isolation
 
 ## Moderation core
 - [x] Shared actor-admin and bot-permission checks (initial command-level implementation)
