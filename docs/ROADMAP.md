@@ -52,7 +52,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 
 ## Operations
 - [x] Admin-only aggregate moderation metrics by day/week/month from confirmed audit records (automated protection-event telemetry remains separate)
-- [ ] Database backup and restore guide
+- [x] PostgreSQL backup/restore guide covering encrypted dumps, clone-key escrow, isolated restore validation, migrations and rollback
 - [ ] Migration runner
 - [ ] Webhook mode and graceful shutdown
 - [ ] Load, abuse and recovery tests
