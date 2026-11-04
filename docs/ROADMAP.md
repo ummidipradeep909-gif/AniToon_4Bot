@@ -12,8 +12,12 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Clone bot system
 - [x] Main-bot /clone onboarding and BotFather link
 - [x] Private token message deletion and Telegram getMe validation
-- [x] Start one clone per owner on shared dispatcher (in-memory only; restart reconnect required)
-- [ ] Encrypted persistent token storage and clone recovery
+- [x] Start one clone per owner on shared dispatcher
+- [x] Encrypted AES-256-GCM token storage with bot/owner authenticated identity
+- [x] PostgreSQL uniqueness for clone owner and bot ID
+- [x] Startup credential decryption, Telegram validation and per-clone recovery isolation
+- [x] Refuse clone creation when PostgreSQL or the stable encryption key is unavailable
+- [ ] Per-clone lifecycle controls, quotas and isolation
 - [ ] Per-clone lifecycle controls, quotas and isolation
 
 ## Moderation core
