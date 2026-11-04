@@ -80,7 +80,7 @@ func main() {
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterForwardProtectionCommands(dispatcher,db)
- moderation.RegisterBlacklistCommands(dispatcher,db)
+ moderation.RegisterBlacklistCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterGreetingCommands(dispatcher,db)
  moderation.RegisterRulesCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,os.Getenv("CLONE_ENCRYPTION_KEY"))
