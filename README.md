@@ -5,7 +5,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 ## Implemented commands
 
 - /start, /help and /id.
-- /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather.
+- /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather. `/clonestatus`, `/clonepause`, `/cloneresume` and `/cloneremove` let each owner inspect, pause, resume or permanently remove only their own clone.
 - /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
 - /mute and /unmute with temporary/permanent restrictions and duration validation.
@@ -45,7 +45,10 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - At startup, saved credentials are decrypted, revalidated with Telegram and restarted independently. A failed clone recovery is logged by numeric IDs only and does not prevent the main bot from starting.
 - New clone creation is refused unless both PostgreSQL and a valid encryption key are available. The main bot can still start when either is unavailable; clone recovery is skipped in that case.
 - The clone's existing webhook must be removed before connection. If another host is polling the bot, stop it first.
-- This remains a single-process clone runner, not a multi-instance hosting platform. Per-clone lifecycle controls, quotas, and rate-limit isolation are not implemented.
+- `/clonestatus`, `/clonepause`, `/cloneresume` and `/cloneremove` are accepted only in the main bot's private chat and resolve ownership from the authenticated Telegram user ID. Owners cannot control another owner's clone.
+- Paused state is stored in PostgreSQL and survives restarts; startup recovery leaves paused clones stopped. Resume revalidates the encrypted credential with Telegram before polling. Removal stops that clone and deletes its encrypted credential.
+- `CLONE_MAX_BOTS` sets a shared global registered-clone quota (default 100; accepted range 1–10000). PostgreSQL advisory transaction locking makes quota checks atomic across concurrent registrations. One clone per owner remains enforced by the database.
+- This remains a single-process clone runner, not a multi-instance hosting platform. Distributed multi-host polling locks and per-clone resource/rate-limit budgets are not implemented.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
 
 **Encryption key setup (required for persistent clones):**
@@ -56,7 +59,7 @@ Generate the key once:
 
 Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
 
-Apply `migrations/010_clone_credentials.sql` to existing databases before deploying this version. New Docker-managed databases run it during initialisation.
+Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
 
 ## Welcome and goodbye messages
 
@@ -204,7 +207,7 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Notes, custom filters, reports, and production clone lifecycle management remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Notes, custom filters and reports remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
