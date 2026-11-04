@@ -94,3 +94,17 @@ func TestLoadWebhookRequiresHTTPSAndSecret(t *testing.T) {
 	t.Setenv("WEBHOOK_PATH", "/../secret")
 	if _, err := Load(); err == nil { t.Fatal("expected path traversal to fail") }
 }
+
+func TestLoadWebhookUsesPlatformPort(t *testing.T) {
+	t.Setenv("BOT_TOKEN", "123456:testing-token")
+	t.Setenv("BOT_MODE", "webhook")
+	t.Setenv("LOG_LEVEL", "info")
+	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
+	t.Setenv("WEBHOOK_PATH", "")
+	t.Setenv("WEBHOOK_LISTEN_ADDR", "")
+	t.Setenv("PORT", "9000")
+	t.Setenv("WEBHOOK_SECRET_TOKEN", "secret_token-123")
+	got, err := Load()
+	if err != nil { t.Fatalf("Load() error = %v", err) }
+	if got.WebhookListenAddr != ":9000" { t.Fatalf("listener = %q, want :9000", got.WebhookListenAddr) }
+}
