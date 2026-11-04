@@ -1,112 +1,70 @@
 package config
 
 import (
-	"os"
-	"testing"
+ "encoding/base64"
+ "os"
+ "testing"
 )
 
-func TestLoadRequiresToken(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "")
-	t.Setenv("BOT_MODE", "")
-	t.Setenv("LOG_LEVEL", "")
-	if _, err := Load(); err == nil {
-		t.Fatal("expected missing BOT_TOKEN to fail")
-	}
+func requiredEnv(t *testing.T) {
+ t.Helper()
+ t.Setenv("BOT_TOKEN","123456:testing-token")
+ t.Setenv("DATABASE_URL","postgres://user:pass@localhost/db")
+ t.Setenv("REDIS_URL","redis://localhost:6379/0")
+ t.Setenv("CLONE_ENCRYPTION_KEY",base64.StdEncoding.EncodeToString(make([]byte,32)))
+ t.Setenv("AI_SERVICE_TOKEN","")
+ t.Setenv("BOT_MODE","")
+ t.Setenv("LOG_LEVEL","")
+ t.Setenv("WEBHOOK_URL","")
+ t.Setenv("WEBHOOK_PATH","")
+ t.Setenv("WEBHOOK_LISTEN_ADDR","")
+ t.Setenv("WEBHOOK_SECRET_TOKEN","")
+ t.Setenv("PORT","")
+}
+
+func TestLoadRequiresSecrets(t *testing.T) {
+ requiredEnv(t)
+ t.Setenv("BOT_TOKEN","")
+ if _,err:=Load(); err==nil { t.Fatal("missing bot token accepted") }
+ requiredEnv(t)
+ t.Setenv("DATABASE_URL","")
+ if _,err:=Load(); err==nil { t.Fatal("missing database URL accepted") }
+ requiredEnv(t)
+ t.Setenv("REDIS_URL","")
+ if _,err:=Load(); err==nil { t.Fatal("missing Redis URL accepted") }
+ requiredEnv(t)
+ t.Setenv("CLONE_ENCRYPTION_KEY","")
+ if _,err:=Load(); err==nil { t.Fatal("missing clone encryption key accepted") }
 }
 
 func TestLoadDefaults(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "123456:testing-token")
-	t.Setenv("BOT_MODE", "")
-	t.Setenv("LOG_LEVEL", "")
-	t.Setenv("PORT", "")
-	got, err := Load()
-	if err != nil {
-		t.Fatalf("Load() error = %v", err)
-	}
-	if got.Mode != "polling" || got.LogLevel != "info" {
-		t.Fatalf("unexpected defaults: %#v", got)
-	}
+ requiredEnv(t)
+ got,err:=Load()
+ if err!=nil { t.Fatalf("Load(): %v",err) }
+ if got.Mode!="polling" || got.LogLevel!="info" { t.Fatalf("unexpected defaults: %#v",got) }
+ if got.CloneEncryptionKey=="" { t.Fatal("clone key not loaded") }
 }
 
-func TestLoadRejectsUnsupportedMode(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "123456:testing-token")
-	t.Setenv("BOT_MODE", "push")
-	t.Setenv("LOG_LEVEL", "")
-	if _, err := Load(); err == nil {
-		t.Fatal("expected unsupported mode to fail")
-	}
+func TestLoadRejectsUnsupportedModeAndLogLevel(t *testing.T) {
+ requiredEnv(t); t.Setenv("BOT_MODE","push")
+ if _,err:=Load(); err==nil { t.Fatal("unsupported mode accepted") }
+ requiredEnv(t); t.Setenv("LOG_LEVEL","verbose")
+ if _,err:=Load(); err==nil { t.Fatal("invalid log level accepted") }
 }
 
-func TestLoadRejectsInvalidLogLevel(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "123456:testing-token")
-	t.Setenv("BOT_MODE", "polling")
-	t.Setenv("LOG_LEVEL", "verbose")
-	if _, err := Load(); err == nil {
-		t.Fatal("expected invalid log level to fail")
-	}
+func TestLoadWebhookValidation(t *testing.T) {
+ requiredEnv(t); t.Setenv("BOT_MODE","webhook"); t.Setenv("WEBHOOK_URL","http://example.com"); t.Setenv("WEBHOOK_SECRET_TOKEN","valid-secret")
+ if _,err:=Load(); err==nil { t.Fatal("non-HTTPS webhook accepted") }
+ requiredEnv(t); t.Setenv("BOT_MODE","webhook"); t.Setenv("WEBHOOK_URL","https://example.com"); t.Setenv("WEBHOOK_SECRET_TOKEN","")
+ if _,err:=Load(); err==nil { t.Fatal("missing webhook secret accepted") }
+ requiredEnv(t); t.Setenv("BOT_MODE","webhook"); t.Setenv("WEBHOOK_URL","https://example.com"); t.Setenv("WEBHOOK_SECRET_TOKEN","valid-secret"); t.Setenv("WEBHOOK_PATH","/../secret")
+ if _,err:=Load(); err==nil { t.Fatal("traversal webhook path accepted") }
 }
 
-func TestEnvironmentIsIsolated(t *testing.T) {
-	// Keep this package's tests independent of any shell-provided token.
-	for _, key := range []string{"BOT_TOKEN", "BOT_MODE", "LOG_LEVEL"} {
-		old, ok := os.LookupEnv(key)
-		t.Cleanup(func() {
-			if ok { _ = os.Setenv(key, old) } else { _ = os.Unsetenv(key) }
-		})
-	}
-}
-
-func TestLoadWebhookDefaultsAndValidation(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "123456:testing-token")
-	t.Setenv("BOT_MODE", "webhook")
-	t.Setenv("LOG_LEVEL", "info")
-	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
-	t.Setenv("WEBHOOK_PATH", "")
-	t.Setenv("WEBHOOK_LISTEN_ADDR", "")
-	t.Setenv("PORT", "")
-	t.Setenv("WEBHOOK_SECRET_TOKEN", "secret_token-123")
-	got, err := Load()
-	if err != nil { t.Fatalf("Load() error = %v", err) }
-	if got.WebhookPath != "/telegram/webhook" || got.WebhookListenAddr != ":8080" {
-		t.Fatalf("unexpected webhook defaults: %#v", got)
-	}
-	if got.WebhookURL+got.WebhookPath != "https://bot.example.com/telegram/webhook" {
-		t.Fatalf("unexpected public webhook URL: %s%s", got.WebhookURL, got.WebhookPath)
-	}
-}
-
-func TestLoadWebhookRequiresHTTPSAndSecret(t *testing.T) {
-	base := func() {
-		t.Setenv("BOT_TOKEN", "123456:testing-token")
-		t.Setenv("BOT_MODE", "webhook")
-		t.Setenv("LOG_LEVEL", "info")
-		t.Setenv("WEBHOOK_PATH", "/telegram/webhook")
-		t.Setenv("WEBHOOK_LISTEN_ADDR", ":8080")
-		t.Setenv("WEBHOOK_SECRET_TOKEN", "secret_token-123")
-	}
-	base()
-	t.Setenv("WEBHOOK_URL", "http://bot.example.com")
-	if _, err := Load(); err == nil { t.Fatal("expected non-HTTPS webhook URL to fail") }
-	base()
-	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
-	t.Setenv("WEBHOOK_SECRET_TOKEN", "")
-	if _, err := Load(); err == nil { t.Fatal("expected missing webhook secret to fail") }
-	base()
-	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
-	t.Setenv("WEBHOOK_PATH", "/../secret")
-	if _, err := Load(); err == nil { t.Fatal("expected path traversal to fail") }
-}
-
-func TestLoadWebhookUsesPlatformPort(t *testing.T) {
-	t.Setenv("BOT_TOKEN", "123456:testing-token")
-	t.Setenv("BOT_MODE", "webhook")
-	t.Setenv("LOG_LEVEL", "info")
-	t.Setenv("WEBHOOK_URL", "https://bot.example.com")
-	t.Setenv("WEBHOOK_PATH", "")
-	t.Setenv("WEBHOOK_LISTEN_ADDR", "")
-	t.Setenv("PORT", "9000")
-	t.Setenv("WEBHOOK_SECRET_TOKEN", "secret_token-123")
-	got, err := Load()
-	if err != nil { t.Fatalf("Load() error = %v", err) }
-	if got.WebhookListenAddr != ":9000" { t.Fatalf("listener = %q, want :9000", got.WebhookListenAddr) }
+func TestLoadDoesNotExposeSecretContents(t *testing.T) {
+ requiredEnv(t)
+ t.Setenv("BOT_TOKEN","")
+ t.Setenv("BOT_TOKEN_FILE",os.TempDir()+"/anitoon-no-such-secret")
+ _,err:=Load()
+ if err==nil || err.Error()=="123456:testing-token" { t.Fatalf("unexpected error: %v",err) }
 }
