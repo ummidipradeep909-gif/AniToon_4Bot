@@ -56,7 +56,7 @@ func formatAdminList(admins []gotgbot.ChatMember) string {
 		role := "Administrator"
 		if member.GetStatus() == StatusCreator {
 			role = "Owner"
- else if member.GetStatus() == StatusAdmin {
+		} else if member.GetStatus() == StatusAdmin {
 			merged := member.MergeChatMember()
 			if merged.CustomTitle != "" {
 				role += " (" + merged.CustomTitle + ")"
