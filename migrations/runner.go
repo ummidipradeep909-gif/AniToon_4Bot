@@ -110,7 +110,7 @@ func applyOne(ctx context.Context, conn *pgxpool.Conn, item migration) error {
 		return fmt.Errorf("read migration history for %s: %w", item.name, err)
 	}
 
-	if _, err = tx.Exec(ctx, string(item.sql)); err != nil {
+	if _, err = tx.Exec(ctx, string(item.sql), pgx.QueryExecModeSimpleProtocol); err != nil {
 		return fmt.Errorf("apply migration %s (transaction rolled back): %w", item.name, err)
 	}
 	if _, err = tx.Exec(ctx, "INSERT INTO schema_migrations(version, filename, checksum) VALUES($1,$2,$3)", item.version, item.name, item.checksum); err != nil {
