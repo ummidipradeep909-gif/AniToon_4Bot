@@ -5,7 +5,9 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 <b>General commands</b>
 /start — introduction
 /help — command guide
-/id — show chat and user IDs (reply to inspect another member)\n/info [user_id] — show member details (reply or omit ID for yourself)\n/admins — list current group administrators
+/id — show chat and user IDs (reply to inspect another member)
+/info [user_id] — show member details (reply or omit ID for yourself)
+/admins — list current group administrators
 
 <b>Clone setup (main bot private chat)</b>
 /clone — connect your own BotFather bot token
