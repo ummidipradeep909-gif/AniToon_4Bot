@@ -140,24 +140,12 @@ func main() {
  }
  signalCtx,stopSignals:=signal.NotifyContext(context.Background(),os.Interrupt,syscall.SIGTERM)
  defer stopSignals()
- idleDone:=make(chan struct{})
- go func(){ updater.Idle(); close(idleDone) }()
+ // The updater workers run independently; waiting on the signal context avoids
+ // an Idle/Stop startup race while still keeping the process alive.
  <-signalCtx.Done()
- logger.Info("shutdown signal received; stopping updates")
- shutdownCtx,shutdownCancel:=context.WithTimeout(context.Background(),20*time.Second)
- defer shutdownCancel()
- stopped:=make(chan error,1)
- go func(){ stopped<-updater.Stop() }()
- select {
- case stopErr:=<-stopped:
-  if stopErr!=nil { logger.Error("updater shutdown failed","error",stopErr) }
- case <-shutdownCtx.Done():
-  logger.Error("updater shutdown timed out")
- }
- select {
- case <-idleDone:
- case <-shutdownCtx.Done():
-  logger.Error("updater idle loop did not stop before deadline")
+ logger.Info("shutdown signal received; stopping webhook server and all bot update loops")
+ if err:=updater.Stop(); err!=nil {
+  logger.Error("updater shutdown failed","error",err)
  }
  logger.Info("AniToon_4Bot shutdown complete")
 }
