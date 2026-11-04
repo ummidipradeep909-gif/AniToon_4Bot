@@ -42,6 +42,10 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 ## Community
 - [x] Per-bot/per-group welcome and goodbye messages with admin commands, safe placeholders and HTML escaping
 - [x] Per-bot/per-group persistent group rules with admin configuration and private delivery
+- [x] Shared OpenAI assist foundation with authenticated policy API
+- [x] AI-assisted anti-flood review (admin suggestion only)
+- [x] AI-assisted anti-raid review using aggregate join telemetry
+- [x] AI-assisted phishing review for blocked links (admin suggestion only)
 - [ ] Notes and custom filters
 - [ ] Reports and admin notifications
 - [ ] User information and admin list
