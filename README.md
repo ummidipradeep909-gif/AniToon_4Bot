@@ -14,7 +14,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
 - /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
-- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- `/modlog [count]` displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- `/metrics [day|week|month]` provides aggregate confirmed moderation counts for 24 hours, 7 days or 30 days: total actions, distinct moderators, distinct affected members and action breakdown. Only verified group admins can view it; no user IDs or free-form reasons are included. Metrics reflect records in the audit log, not every automatic deletion/protection event.
 - `/report [day|week]` gives group admins a 24-hour or 7-day moderation summary grouped by action. `/reportnotify on|off` enables or disables opt-in alerts for confirmed ban, unban and kick events. Settings are isolated by bot and group; notification failures never change the moderation result.
 - /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
 - /antilink on|off enables per-bot, per-group link protection. Non-admin messages containing unapproved external links or Telegram invite links are deleted; admins are exempt.
@@ -35,7 +36,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /report, /reportnotify, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /metrics, /report, /reportnotify, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported. PostgreSQL enforces one row per owner and one owner per bot ID. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -63,6 +64,10 @@ Generate the key once:
 Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
 
 Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
+
+## Database backup and restore
+
+See the [PostgreSQL backup and restore guide](docs/operations/DATABASE_BACKUP_RESTORE.md) for encrypted backups, clone encryption key escrow, isolated restore validation, migration handling, production cutover and rollback procedures. **Keep `CLONE_ENCRYPTION_KEY` separately and securely:** a database dump alone cannot recover saved clone bot tokens.
 
 ## Welcome and goodbye messages
 
@@ -210,7 +215,7 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Automated scheduled report delivery and log-channel routing remain future enhancements. The Python policy endpoint is telemetry only and does not automatically punish users.
+Automated scheduled report delivery and log-channel routing remain future enhancements. The metrics command summarizes confirmed PostgreSQL audit events and does not claim complete telemetry for automated protection events. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 

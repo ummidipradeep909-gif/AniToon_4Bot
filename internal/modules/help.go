@@ -65,6 +65,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /filters — list custom filter triggers (admin only)
 
 /modlog [count] — show recent moderation actions (1–20)
+/metrics [day|week|month] — aggregate moderation metrics (admin only)
 /report [day|week] — moderation summary for the last 24 hours or 7 days (admin only)
 /reportnotify on|off — enable or disable moderation event alerts (admin only)
 

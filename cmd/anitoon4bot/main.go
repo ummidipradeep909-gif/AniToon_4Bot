@@ -72,6 +72,7 @@ func main() {
  clones.RegisterCommands(dispatcher)
  moderation.RegisterWarningCommands(dispatcher,db)
  moderation.RegisterAuditCommands(dispatcher,db)
+ moderation.RegisterMetricsCommands(dispatcher)
  moderation.RegisterReportCommands(dispatcher)
  moderation.RegisterUserInfoCommands(dispatcher)
  moderation.RegisterPurgeCommands(dispatcher)
