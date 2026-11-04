@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ type response struct {
 	Mode string `json:"mode"`
 	EnforcementEnabled bool `json:"enforcement_enabled"`
 }
+
+const maxAIResponseBytes = 64 * 1024
 
 type Client struct {
 	endpoint string
@@ -82,8 +85,15 @@ func (c *Client) Analyze(ctx context.Context, chatID, userID, messageID int64, f
 	if resp.StatusCode != http.StatusOK {
 		return Analysis{}, fmt.Errorf("AI service returned HTTP %d", resp.StatusCode)
 	}
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, maxAIResponseBytes+1))
+	if err != nil {
+		return Analysis{}, fmt.Errorf("read AI response: %w", err)
+	}
+	if len(responseBody) > maxAIResponseBytes {
+		return Analysis{}, fmt.Errorf("AI service response exceeds %d bytes", maxAIResponseBytes)
+	}
 	var decoded response
-	if err := json.NewDecoder(resp.Body).Decode(&decoded); err != nil {
+	if err := json.Unmarshal(responseBody, &decoded); err != nil {
 		return Analysis{}, fmt.Errorf("decode AI response: %w", err)
 	}
 	if decoded.EnforcementEnabled || decoded.Mode != "assist" {

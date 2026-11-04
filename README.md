@@ -4,7 +4,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 
 ## Implemented commands
 
-- /start, /help and /id.
+- `/start` and `/help`. `/id` shows chat ID/type/title and your user ID; reply to a member's message to show their ID. `/info` shows your own Telegram member details, or accepts a reply/numeric ID for another member. `/admins` fetches the current live group administrator list, including owner/admin roles and custom admin titles.
 - /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather. `/clonestatus`, `/clonepause`, `/cloneresume` and `/cloneremove` let each owner inspect, pause, resume or permanently remove only their own clone.
 - /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.
@@ -14,7 +14,9 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /lock [type], /unlock [type] and /locks for per-group default-permission locks. Categories: messages, media, stickers, polls, previews, info, invites, pin, topics and reactions. The original Telegram permissions are saved in PostgreSQL and restored when the final lock is removed.
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
 - /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
-- /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- `/modlog [count]` displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- `/metrics [day|week|month]` provides aggregate confirmed moderation counts for 24 hours, 7 days or 30 days: total actions, distinct moderators, distinct affected members and action breakdown. Only verified group admins can view it; no user IDs or free-form reasons are included. Metrics reflect records in the audit log, not every automatic deletion/protection event.
+- `/report [day|week]` gives group admins a 24-hour or 7-day moderation summary grouped by action. `/reportnotify on|off` enables or disables opt-in alerts for confirmed ban, unban and kick events. Settings are isolated by bot and group; notification failures never change the moderation result.
 - /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
 - /antilink on|off enables per-bot, per-group link protection. Non-admin messages containing unapproved external links or Telegram invite links are deleted; admins are exempt.
 - /allowlink add <domain>, /allowlink remove <domain> and /allowlink list manage the group's trusted domains. Exact domains and their subdomains are allowed; Telegram invite links remain blocked.
@@ -22,6 +24,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /addblacklist <phrase>, /unblacklist <phrase> and /blacklist manage up to 100 case-insensitive keyword/phrase rules per bot and group. Text and media captions are checked.
 - /blacklistmode delete|warn selects whether matching messages are deleted only or deleted with a warning record. Administrators are exempt; enforcement fails open if the policy or sender role cannot be verified.
 - `/setrules <text>`, `/rules`, `/privaterules` and `/clearrules` manage persistent group rules independently for each bot and group. Only verified administrators can set or clear rules; members can view them in the group or request a private copy.
+- `/save <name> <content>`, `/get <name>`, `/notes` and `/clear <name>` manage up to 100 named group notes per bot and group. Admins create/update and remove notes; all members can retrieve and list them.
+- `/filter add <trigger> <response>`, `/filter remove <trigger>` and `/filters` manage up to 100 custom replies per bot and group. Triggers are exact, case-insensitive full-message or caption matches; slash commands and partial matches are ignored. Only verified admins can manage filters.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -32,7 +36,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /metrics, /report, /reportnotify, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported. PostgreSQL enforces one row per owner and one owner per bot ID. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -59,7 +63,11 @@ Generate the key once:
 
 Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
 
-Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
+On startup, the Go bot now runs all embedded SQL migrations in numeric order after connecting to PostgreSQL. The runner records each version and SHA-256 checksum in `schema_migrations`, serializes concurrent runners with a PostgreSQL advisory lock, and stops startup if a migration fails or an already-applied migration file has changed. Back up the database before upgrading; do not edit released migration files—add a new numbered migration instead.
+
+## Database backup and restore
+
+See the [PostgreSQL backup and restore guide](docs/operations/DATABASE_BACKUP_RESTORE.md) for encrypted backups, clone encryption key escrow, isolated restore validation, migration handling, production cutover and rollback procedures. **Keep `CLONE_ENCRYPTION_KEY` separately and securely:** a database dump alone cannot recover saved clone bot tokens.
 
 ## Welcome and goodbye messages
 
@@ -207,14 +215,37 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Notes, custom filters and reports remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Automated scheduled report delivery and log-channel routing remain future enhancements. The metrics command summarizes confirmed PostgreSQL audit events and does not claim complete telemetry for automated protection events. The Python policy endpoint is telemetry only and does not automatically punish users.
+
+## Webhook deployment and graceful shutdown
+
+Polling remains the default. To run the primary bot behind an HTTPS reverse proxy, set:
+
+```env
+BOT_MODE=webhook
+WEBHOOK_URL=https://bot.example.com
+WEBHOOK_PATH=/telegram/webhook
+WEBHOOK_SECRET_TOKEN=<generate-a-random-secret>
+# Optional; defaults to :$PORT when PORT is set, otherwise :8080
+WEBHOOK_LISTEN_ADDR=
+```
+
+- `WEBHOOK_URL` is the public HTTPS base URL; the configured path is appended to it.
+- The Go process listens on `WEBHOOK_LISTEN_ADDR` (or the platform `PORT`) behind a TLS-terminating reverse proxy. Forward the exact webhook path to this listener and do not expose it without HTTPS at the public edge.
+- The secret token is required and validated against Telegram's allowed characters. Telegram sends it in the `X-Telegram-Bot-Api-Secret-Token` header; the Gotgbot webhook handler validates it.
+- Do not put the webhook secret in the URL, logs, or source control. Store it in the deployment secret manager.
+- The primary bot receives webhook updates; persisted clone bots continue using polling on the shared updater. The deployment must allow outbound HTTPS to Telegram and inbound HTTPS through the proxy.
+- Send SIGTERM (normal container stop) or SIGINT to initiate graceful shutdown. The updater stops the webhook server and all primary/clone update loops, then PostgreSQL and Redis connections close.
+- For a reverse proxy, configure a suitable request-body limit and forward requests only to the bot's listener. Do not configure Telegram to call the internal listener address directly.
+
+When switching from polling to webhook mode, deploy one instance only and ensure no other host is polling the primary bot token. When switching back to polling, Gotgbot removes the webhook before polling starts. Do not run multiple replicas with the same primary or clone bot tokens; distributed ownership/leases are not implemented.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL, REDIS_URL and CLONE_ENCRYPTION_KEY (generate the latter with `openssl rand -base64 32` and keep it stable/backed up) (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/012_group_rules.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/015_moderation_reports.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 

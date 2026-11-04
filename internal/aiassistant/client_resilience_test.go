@@ -1,0 +1,69 @@
+package aiassistant
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+)
+
+const validAssistResponse = `{"mode":"assist","enforcement_enabled":false,"analysis":{"category":"spam","confidence":0.8,"recommendation":"admin_review","rationale":"review"}}`
+
+func TestAnalyzeTruncatesOversizedUnicodeMessageByRunes(t *testing.T) {
+	server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+		var payload struct{Text string `json:"text"`}
+		if err:=json.NewDecoder(r.Body).Decode(&payload);err!=nil{t.Error(err);http.Error(w,"bad request",400);return}
+		if got:=len([]rune(payload.Text));got!=4000{t.Errorf("sent %d runes, want 4000",got)}
+		w.Header().Set("Content-Type","application/json")
+		_,_=w.Write([]byte(validAssistResponse))
+	}))
+	defer server.Close()
+	client:=NewClient(server.URL,"test-service-token")
+	if _,err:=client.Analyze(context.Background(),1,2,3,"anti_flood",strings.Repeat("🙂",4001));err!=nil{t.Fatal(err)}
+}
+
+func TestAnalyzeHonorsCallerTimeout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Consume the request body before waiting for cancellation. If the
+		// handler waits first, the client may still be writing the body and
+		// cancellation may not reach the server handler promptly.
+		_, _ = io.Copy(io.Discard, r.Body)
+		<-r.Context().Done()
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-service-token")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	if _, err := client.Analyze(ctx, 1, 2, 3, "anti_flood", "burst"); err == nil {
+		t.Fatal("expected caller deadline to abort AI request")
+	}
+}
+
+func TestAnalyzeRejectsMalformedAndNonSuccessResponses(t *testing.T) {
+	for _,tc:=range []struct{name string;status int;body string}{
+		{"malformed JSON",http.StatusOK,"not-json"},
+		{"provider unavailable",http.StatusServiceUnavailable,`{"error":"unavailable"}`},
+		{"punitive recommendation",http.StatusOK,`{"mode":"assist","enforcement_enabled":false,"analysis":{"category":"spam","confidence":1,"recommendation":"ban","rationale":"no"}}`},
+	} {
+		t.Run(tc.name,func(t *testing.T){
+			server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){w.WriteHeader(tc.status);_,_=w.Write([]byte(tc.body))}))
+			defer server.Close()
+			if _,err:=NewClient(server.URL,"test-token").Analyze(context.Background(),1,2,3,"anti_flood","test");err==nil{t.Fatal("expected invalid response to fail safely")}
+		})
+	}
+}
+
+func TestAnalyzeRejectsOversizedResponseBody(t *testing.T) {
+	server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
+		w.Header().Set("Content-Type","application/json")
+		_,_=w.Write([]byte(`{"mode":"assist","enforcement_enabled":false,"analysis":{"category":"spam","confidence":0.8,"recommendation":"allow","rationale":"`+strings.Repeat("x",70*1024)+`"}}`))
+	}))
+	defer server.Close()
+	if _,err:=NewClient(server.URL,"test-token").Analyze(context.Background(),1,2,3,"anti_flood","test");err==nil{t.Fatal("oversized AI response must be rejected")}
+}

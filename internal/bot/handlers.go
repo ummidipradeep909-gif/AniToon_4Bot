@@ -2,6 +2,8 @@ package bot
 
 import (
  "fmt"
+ "html"
+ "strings"
 
  "github.com/PaulSonOfLars/gotgbot/v2"
  "github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -29,10 +31,26 @@ func Help(b *gotgbot.Bot,ctx *ext.Context) error {
  _,err:=ctx.EffectiveMessage.Reply(b,modules.HelpText,&gotgbot.SendMessageOpts{ParseMode:"HTML"}); return err
 }
 
-func ID(b *gotgbot.Bot,ctx *ext.Context) error {
- var chatID,userID int64
- if ctx.EffectiveChat!=nil { chatID=ctx.EffectiveChat.Id }
- if ctx.EffectiveUser!=nil { userID=ctx.EffectiveUser.Id }
- _,err:=ctx.EffectiveMessage.Reply(b,fmt.Sprintf("<b>Chat ID:</b> <code>%d</code>\n<b>Your ID:</b> <code>%d</code>",chatID,userID),&gotgbot.SendMessageOpts{ParseMode:"HTML"})
+func ID(b *gotgbot.Bot, ctx *ext.Context) error {
+ var chatID, userID int64
+ chatType, chatTitle := "unknown", ""
+ if ctx.EffectiveChat != nil {
+  chatID, chatType, chatTitle = ctx.EffectiveChat.Id, ctx.EffectiveChat.Type, ctx.EffectiveChat.Title
+ }
+ if ctx.EffectiveUser != nil { userID = ctx.EffectiveUser.Id }
+ targetLine := fmt.Sprintf("<b>Your ID:</b> <code>%d</code>", userID)
+ if ctx.EffectiveMessage != nil && ctx.EffectiveMessage.ReplyToMessage != nil && ctx.EffectiveMessage.ReplyToMessage.From != nil {
+  target := ctx.EffectiveMessage.ReplyToMessage.From
+  targetLine = fmt.Sprintf("<b>Replied member:</b> %s (<code>%d</code>)", html.EscapeString(compactDisplayName(target)), target.Id)
+ }
+ message := fmt.Sprintf("<b>Telegram IDs</b>\n<b>Chat ID:</b> <code>%d</code>\n<b>Chat type:</b> %s\n<b>Chat title:</b> %s\n%s", chatID, html.EscapeString(chatType), html.EscapeString(chatTitle), targetLine)
+ _, err := ctx.EffectiveMessage.Reply(b, message, &gotgbot.SendMessageOpts{ParseMode: "HTML"})
  return err
+}
+
+func compactDisplayName(user *gotgbot.User) string {
+ if user == nil { return "Unknown" }
+ name := strings.Join(strings.Fields(strings.TrimSpace(user.FirstName+" "+user.LastName)), " ")
+ if name == "" { return "Unknown" }
+ return name
 }
