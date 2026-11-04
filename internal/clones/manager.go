@@ -273,7 +273,8 @@ func (m *Manager) Status(b *gotgbot.Bot, c *ext.Context) error {
 	row,err:=m.store.getByOwner(ctx,owner)
 	if err!=nil { _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't read your clone status. Please try again later.",nil); return sendErr }
 	state:="paused"; if row.Enabled { state="active" }
-	if m.active[botID] { state="running" }
+	m.mu.Lock(); running:=m.active[botID]; m.mu.Unlock()
+	if running { state="running" }
 	_,err=b.SendMessage(c.EffectiveChat.Id,fmt.Sprintf("Clone bot ID: %d\nStatus: %s\nQuota: %d total registered clones",botID,state,m.maxClones),nil)
 	return err
 }
