@@ -15,6 +15,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /setflood [limit] [seconds] [delete|mute|ban], /flood and /clearflood for Redis-backed, per-bot/per-group anti-flood protection. Admins are exempt; settings are stored in PostgreSQL.
 - /setraid [joins] [seconds] [quarantine_minutes], /raid and /clearraid for Redis-backed join-wave detection. When the threshold is reached, the bot temporarily restricts the regular members in that join wave; Telegram automatically expires the restrictions. Each clone has independent settings.
 - /modlog [count] displays the latest 1–20 successful moderation actions made by the current bot in the current group. Logs are stored in PostgreSQL and isolated by bot and group.
+- `/report [day|week]` gives group admins a 24-hour or 7-day moderation summary grouped by action. `/reportnotify on|off` enables or disables opt-in alerts for confirmed ban, unban and kick events. Settings are isolated by bot and group; notification failures never change the moderation result.
 - /slowmode [seconds] and /slowmode off configure a per-bot, per-group member message interval (1–3600 seconds). Redis enforces the interval by deleting excess messages; administrators and slash commands are exempt.
 - /antilink on|off enables per-bot, per-group link protection. Non-admin messages containing unapproved external links or Telegram invite links are deleted; admins are exempt.
 - /allowlink add <domain>, /allowlink remove <domain> and /allowlink list manage the group's trusted domains. Exact domains and their subdomains are allowed; Telegram invite links remain blocked.
@@ -34,7 +35,7 @@ The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the
 2. Complete BotFather's setup and copy the new bot's API token.
 3. Return to the **main AniToon_4Bot private chat** and send /clone.
 4. Send the BotFather token as the next private message.
-5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
+5. The bot deletes the token message, validates the token using Telegram's getMe API, encrypts it with AES-256-GCM, persists it in PostgreSQL, and then starts polling the new bot on the shared dispatcher. The clone receives the currently implemented /start, /help, /id, /ban, /unban, /kick, /mute, /unmute, /warn, /warnings, /resetwarn, /del, /purge, /lock, /unlock, /locks, /setflood, /flood, /clearflood, /setraid, /raid, /clearraid, /modlog, /report, /reportnotify, /slowmode, /antilink, /allowlink, /antiforward, /addblacklist, /unblacklist, /blacklist and /blacklistmode, /setrules, /rules, /privaterules and /clearrules handlers.
 
 Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one clone per owner is supported. PostgreSQL enforces one row per owner and one owner per bot ID. A token is accepted only in the main bot's private chat; group token submissions are ignored. Do not share tokens with anyone.
 
@@ -209,14 +210,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Reports and admin notifications remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Automated scheduled report delivery and log-channel routing remain future enhancements. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL, REDIS_URL and CLONE_ENCRYPTION_KEY (generate the latter with `openssl rand -base64 32` and keep it stable/backed up) (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/014_group_notes_custom_filters.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/015_moderation_reports.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
