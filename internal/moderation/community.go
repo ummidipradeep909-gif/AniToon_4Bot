@@ -214,14 +214,14 @@ func (s *communityService) filterCommand(b *gotgbot.Bot, c *ext.Context) error {
 func (s *communityService) listFilters(b *gotgbot.Bot, c *ext.Context) error {
 	chatID,_,err:=s.requireAdmin(b,c);if err!=nil{return reply(b,c,err.Error())}
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel()
-	rows,err:=s.db.Query(ctx,`SELECT trigger FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 ORDER BY trigger LIMIT 100`,b.User.Id,chatID)
+	rows,err:=s.db.Query(ctx,`SELECT trigger FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 ORDER BY trigger LIMIT 50`,b.User.Id,chatID)
 	if err!=nil{return reply(b,c,"I couldn't list this group's custom filters.")}
 	defer rows.Close()
 	triggers:=[]string{}
 	for rows.Next(){var trigger string;if rows.Scan(&trigger)!=nil{return reply(b,c,"I couldn't list this group's custom filters.")};triggers=append(triggers,trigger)}
 	if rows.Err()!=nil{return reply(b,c,"I couldn't list this group's custom filters.")}
 	if len(triggers)==0{return reply(b,c,"No custom filters are configured for this bot in this group.")}
-	return reply(b,c,"🔎 Custom filters:\n"+strings.Join(triggers,"\n"))
+	return reply(b,c,"🔎 Custom filters (first 50):\n"+strings.Join(triggers,"\n"))
 }
 
 func (s *communityService) handleFilter(b *gotgbot.Bot,c *ext.Context) error {
@@ -242,5 +242,6 @@ func (s *communityService) handleFilter(b *gotgbot.Bot,c *ext.Context) error {
 			return nil
 		}
 	}
+	if rows.Err()!=nil{return nil}
 	return nil
 }
