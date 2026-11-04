@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS greeting_configs (
     chat_id BIGINT NOT NULL REFERENCES chats(chat_id) ON DELETE CASCADE,
     welcome_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     goodbye_enabled BOOLEAN NOT NULL DEFAULT FALSE,
-    welcome_template TEXT NOT NULL DEFAULT '👋 Welcome {mention} to {chatname}!\nPlease read the group rules.',
+    welcome_template TEXT NOT NULL DEFAULT E'👋 Welcome {mention} to {chatname}!\nPlease read the group rules.',
     goodbye_template TEXT NOT NULL DEFAULT '👋 {fullname} has left {chatname}.',
     updated_by BIGINT NOT NULL,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
