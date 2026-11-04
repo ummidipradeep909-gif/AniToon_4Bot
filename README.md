@@ -262,3 +262,8 @@ The Go module uses gotgbot v2.0.0-rc.37. GitHub Actions runs Go and Python check
 - Keep policy-service endpoints private or authenticate service-to-service calls.
 
 See docs/ROADMAP.md and docs/architecture/DECISIONS.md for implementation status and security boundaries.
+
+
+## Production deployment profile
+
+A hardened single-host Docker Compose profile is available in [`compose.production.yaml`](compose.production.yaml). Copy [`.env.production.example`](.env.production.example) to `.env.production`, replace every placeholder with unique secrets, and follow [`docs/operations/PRODUCTION_DEPLOYMENT.md`](docs/operations/PRODUCTION_DEPLOYMENT.md). Never commit `.env.production`. The production profile keeps PostgreSQL and Redis private, enables Redis authentication, runs the bot and policy service as non-root users, and applies container hardening. Clone encryption-key rotation is deliberately not automated yet: changing `CLONE_ENCRYPTION_KEY` without a tested re-encryption migration makes saved clone credentials unrecoverable.

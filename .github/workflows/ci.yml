@@ -39,6 +39,8 @@ jobs:
       REDIS_TEST_URL: redis://localhost:6379/15
     steps:
       - uses: actions/checkout@v4
+      - name: Validate production Compose profile
+        run: docker compose --env-file .env.production.example -f compose.production.yaml config -q
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'

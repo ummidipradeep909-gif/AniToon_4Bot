@@ -11,3 +11,5 @@ dist/
 coverage.out
 *.log
 .DS_Store
+
+!.env.production.example
