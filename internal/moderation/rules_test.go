@@ -9,7 +9,7 @@ import (
 
 func TestValidateGroupRules(t *testing.T) {
 	if _, err := validateGroupRules("  "); err == nil { t.Fatal("empty rules accepted") }
-	if _, err := validateGroupRules(strings.Repeat("x", maxGroupRulesRunes+1)); err == nil { t.Fatal("oversized rules accepted") }
+	if _, err := validateGroupRules(strings.Repeat("x", maxGroupRulesUTF16Units+1)); err == nil { t.Fatal("oversized rules accepted") }
 	if _, err := validateGroupRules("rules\x00"); err == nil { t.Fatal("control character accepted") }
 	got, err := validateGroupRules("  Be respectful.\nNo spam.  ")
 	if err != nil || got != "Be respectful.\nNo spam." { t.Fatalf("unexpected validation: %q %v", got, err) }
