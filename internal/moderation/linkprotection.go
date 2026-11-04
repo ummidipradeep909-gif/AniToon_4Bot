@@ -16,6 +16,7 @@ import (
 	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 type linkPolicyService struct {
@@ -23,6 +24,7 @@ type linkPolicyService struct {
 	mu sync.RWMutex
 	adminCache map[string]linkAdminCacheEntry
 	ai *aiassistant.Client
+	redis *redis.Client
 }
 
 type linkAdminCacheEntry struct {
@@ -32,8 +34,8 @@ type linkAdminCacheEntry struct {
 
 var linkPattern = regexp.MustCompile(`(?i)(?:https?://|tg://|www\.)[^\s<>()]+|(?:t\.me|telegram\.me)/[^\s<>()]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}(?:/[^\s<>()]*)?`)
 
-func RegisterLinkProtectionCommands(d *ext.Dispatcher, pool *pgxpool.Pool, aiClient *aiassistant.Client) {
-	s := &linkPolicyService{db: pool, adminCache: make(map[string]linkAdminCacheEntry), ai: aiClient}
+func RegisterLinkProtectionCommands(d *ext.Dispatcher, pool *pgxpool.Pool, redisClient *redis.Client, aiClient *aiassistant.Client) {
+	s := &linkPolicyService{db: pool, adminCache: make(map[string]linkAdminCacheEntry), ai: aiClient, redis: redisClient}
 	d.AddHandler(handlers.NewCommand("antilink", func(b *gotgbot.Bot, c *ext.Context) error { return s.configure(b, c) }))
 	d.AddHandler(handlers.NewCommand("allowlink", func(b *gotgbot.Bot, c *ext.Context) error { return s.allowlistCommand(b, c) }))
 	d.AddHandler(handlers.NewMessage(func(m *gotgbot.Message) bool {
@@ -233,9 +235,10 @@ func (s *linkPolicyService) isAdmin(b *gotgbot.Bot, chatID, userID int64) bool {
 }
 
 func (s *linkPolicyService) reviewCooldown(ctx context.Context, key string) (bool, error) {
-	// Redis is optional for the base link policy. If it is unavailable, do not
-	// issue AI calls repeatedly; return false and keep deterministic protection.
-	return false, nil
+	if s.redis == nil {
+		return false, nil
+	}
+	return s.redis.SetNX(ctx, key, "1", time.Minute).Result()
 }
 
 func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error {
