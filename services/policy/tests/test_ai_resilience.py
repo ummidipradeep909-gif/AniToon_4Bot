@@ -8,10 +8,8 @@ from app.ai import analyze_message
 
 class AIResilienceTests(unittest.IsolatedAsyncioTestCase):
     async def test_provider_timeout_is_reported_as_temporary_failure(self):
-        async def handler(_request):
-            await asyncio.sleep(0.05)
-            return httpx.Response(200, json={"choices": [{"message": {"content":
-                '{"category":"none","confidence":0.1,"recommendation":"allow","rationale":"ok"}'}}]})
+        async def handler(request):
+            raise httpx.ReadTimeout("provider timed out", request=request)
 
         async with httpx.AsyncClient(
             transport=httpx.MockTransport(handler), base_url="https://api.openai.com"
