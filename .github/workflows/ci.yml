@@ -11,6 +11,22 @@ permissions:
 jobs:
   go:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: anitoon4
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: anitoon4_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anitoon4 -d anitoon4_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      CLONE_TEST_DATABASE_URL: postgres://anitoon4:test-password@localhost:5432/anitoon4_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
