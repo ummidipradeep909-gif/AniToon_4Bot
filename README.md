@@ -22,6 +22,8 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - /addblacklist <phrase>, /unblacklist <phrase> and /blacklist manage up to 100 case-insensitive keyword/phrase rules per bot and group. Text and media captions are checked.
 - /blacklistmode delete|warn selects whether matching messages are deleted only or deleted with a warning record. Administrators are exempt; enforcement fails open if the policy or sender role cannot be verified.
 - `/setrules <text>`, `/rules`, `/privaterules` and `/clearrules` manage persistent group rules independently for each bot and group. Only verified administrators can set or clear rules; members can view them in the group or request a private copy.
+- `/save <name> <content>`, `/get <name>`, `/notes` and `/clear <name>` manage up to 100 named group notes per bot and group. Admins create/update and remove notes; all members can retrieve and list them.
+- `/filter add <trigger> <response>`, `/filter remove <trigger>` and `/filters` manage up to 100 custom replies per bot and group. Triggers are exact, case-insensitive full-message or caption matches; slash commands and partial matches are ignored. Only verified admins can manage filters.
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
@@ -207,14 +209,14 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 
 ## Not implemented yet
 
-Notes, custom filters and reports remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
+Reports and admin notifications remain on the roadmap. The Python policy endpoint is telemetry only and does not automatically punish users.
 
 ## Development
 
 Requirements: Go 1.24+, Python 3.12+, Docker Compose.
 
 1. Copy .env.example to .env and set BOT_TOKEN, DATABASE_URL, REDIS_URL and CLONE_ENCRYPTION_KEY (generate the latter with `openssl rand -base64 32` and keep it stable/backed up) (PostgreSQL and Redis are required for anti-flood and anti-raid; PostgreSQL is also required for warnings, locks and slow-mode configuration; Redis is required for slow-mode enforcement).
-2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/012_group_rules.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
+2. Start services: docker compose up -d --build postgres redis policy. The initial migration creates the base tables. For existing databases, apply migrations/002_chat_permission_locks.sql through migrations/014_group_notes_custom_filters.sql in numeric order (one `psql -f` command per file) to enable the corresponding group-management features.
 3. Run go test ./... and go vet ./....
 4. Run the bot: go run ./cmd/anitoon4bot.
 
