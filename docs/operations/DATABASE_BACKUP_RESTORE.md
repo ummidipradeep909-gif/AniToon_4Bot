@@ -83,7 +83,7 @@ A restore should be rehearsed against a fresh database or isolated PostgreSQL in
    ```bash
    docker compose exec -T postgres pg_restore \
      -U anitoon4 -d anitoon4_restore \
-     --no-owner --role=anitoon4 \
+     --no-owner --no-acl \
      < "$BACKUP"
    ```
 
@@ -95,12 +95,12 @@ A restore should be rehearsed against a fresh database or isolated PostgreSQL in
    docker compose exec postgres psql -U anitoon4 -d anitoon4_restore \
      -c "SELECT current_database(), current_timestamp;"
    docker compose exec postgres psql -U anitoon4 -d anitoon4_restore \
-     -c "SELECT version, filename FROM schema_migrations ORDER BY version;"
+     -c "\\dt"
    docker compose exec postgres psql -U anitoon4 -d anitoon4_restore \
      -c "SELECT COUNT(*) AS clone_credentials FROM clone_credentials;"
    ```
 
-   The migration query/table names must match the migration-tracking mechanism in the deployed application. This repository currently ships ordered SQL files under `migrations/`; it does not yet provide a dedicated migration runner or a schema-migrations tracking table. If that query reports the table is absent, verify the expected schema directly against the migration files and inspect representative tables instead; do not infer that the restore failed solely because there is no migration ledger.
+   This repository currently ships ordered SQL files under `migrations/`; it does not yet provide a dedicated migration runner or a schema-migrations tracking table. Compare the restored schema with the ordered migration files for the application revision being restored. For example, `clone_credentials` should include the `enabled` column after migration 013. Do not infer that a restore failed merely because no migration ledger exists.
 
 5. Restore the exact matching `CLONE_ENCRYPTION_KEY` and runtime secrets through the secret manager. Point both the Go bot and Python policy service at the restored database (the Compose policy service's `DATABASE_URL` is currently configured in `docker-compose.yml`; update that configuration as part of the controlled cutover). Recreate/restart the services only after validating the configuration.
 6. Check application startup logs for PostgreSQL connectivity, clone credential decryption/recovery, and migration/schema errors. Logs must not contain tokens or encryption key material.
