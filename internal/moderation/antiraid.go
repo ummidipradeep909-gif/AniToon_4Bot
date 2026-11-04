@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/jackc/pgx/v5"
@@ -24,10 +25,11 @@ type raidConfig struct {
 type antiRaidService struct {
 	db *pgxpool.Pool
 	redis *redis.Client
+	ai *aiassistant.Client
 }
 
-func RegisterAntiRaidCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *redis.Client) {
-	s := &antiRaidService{db: pool, redis: client}
+func RegisterAntiRaidCommands(d *ext.Dispatcher, pool *pgxpool.Pool, client *redis.Client, aiClient *aiassistant.Client) {
+	s := &antiRaidService{db: pool, redis: client, ai: aiClient}
 	d.AddHandler(handlers.NewCommand("setraid", func(b *gotgbot.Bot, c *ext.Context) error { return s.setConfig(b,c) }))
 	d.AddHandler(handlers.NewCommand("raid", func(b *gotgbot.Bot, c *ext.Context) error { return s.showConfig(b,c) }))
 	d.AddHandler(handlers.NewCommand("clearraid", func(b *gotgbot.Bot, c *ext.Context) error { return s.clearConfig(b,c) }))
@@ -71,6 +73,10 @@ func isNewMemberJoin(oldStatus, newStatus string) bool {
 
 func raidCounterKey(botID, chatID int64) string {
 	return fmt.Sprintf("anitoon4:raid:%d:%d", botID, chatID)
+}
+
+func raidAIReviewKey(botID, chatID int64) string {
+	return fmt.Sprintf("anitoon4:raid-ai-review:%d:%d", botID, chatID)
 }
 
 func raidAlertKey(botID, chatID int64) string {
@@ -193,6 +199,23 @@ func (s *antiRaidService) handleJoin(b *gotgbot.Bot,c *ext.Context) error {
 		now.Add(-time.Duration(cfg.WindowSeconds)*time.Second).UnixMilli(),
 		now.UnixMilli(),fmt.Sprintf("%d:%d",user.Id,now.UnixNano()),cfg.WindowSeconds*1000).Int64()
 	if err != nil || count < int64(cfg.JoinLimit) { return nil }
+
+	// Ask AI for a one-time advisory assessment of aggregate join telemetry.
+	// This is separate from the deterministic raid threshold and never controls
+	// quarantine. No Telegram IDs or member content are sent to the provider.
+	if s.ai != nil {
+		reviewKey := raidAIReviewKey(botID, chatID)
+		claimed, claimErr := s.redis.SetNX(ctx, reviewKey, "1", time.Duration(cfg.WindowSeconds)*time.Second).Result()
+		if claimErr == nil && claimed {
+			event := fmt.Sprintf("A group join wave reached %d joins in %d seconds. Configured alert threshold: %d joins in %d seconds.", count, cfg.WindowSeconds, cfg.JoinLimit, cfg.WindowSeconds)
+			aiCtx, aiCancel := context.WithTimeout(ctx, 3*time.Second)
+			analysis, aiErr := s.ai.Analyze(aiCtx, chatID, 0, 0, "anti_raid", event)
+			aiCancel()
+			if aiErr == nil && analysis.Recommendation == "admin_review" {
+				_, _ = b.SendMessage(chatID, fmt.Sprintf("🤖 AI raid review: possible coordinated join wave (confidence %.0f%%). %s AI did not take action.", analysis.Confidence*100, analysis.Rationale), nil)
+			}
+		}
+	}
 
 	// A join wave is quarantined, not automatically banned. Each user is
 	// restricted at most once per raid window; Telegram expires the restriction.
