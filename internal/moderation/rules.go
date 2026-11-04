@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf16"
 
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -14,7 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const maxGroupRulesRunes = 3500
+const maxGroupRulesUTF16Units = 4000
 
 type rulesService struct { db *pgxpool.Pool }
 
@@ -36,7 +37,7 @@ func rulesCommandText(m *gotgbot.Message) string {
 func validateGroupRules(raw string) (string, error) {
 	value := strings.TrimSpace(raw)
 	if value == "" { return "", fmt.Errorf("provide the rules text after the command") }
-	if len([]rune(value)) > maxGroupRulesRunes { return "", fmt.Errorf("rules are limited to 3500 characters") }
+	if len(utf16.Encode([]rune(value))) > maxGroupRulesUTF16Units { return "", fmt.Errorf("rules are too long for a single Telegram message (maximum 4000 UTF-16 units)") }
 	for _, r := range value {
 		if unicode.IsControl(r) && r != '\n' && r != '\t' {
 			return "", fmt.Errorf("rules cannot contain control characters")
