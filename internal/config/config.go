@@ -63,7 +63,11 @@ func Load() (Config, error) {
 			return Config{}, fmt.Errorf("WEBHOOK_PATH must be an absolute URL path without traversal, query, or fragment")
 		}
 		if c.WebhookListenAddr == "" {
-			c.WebhookListenAddr = ":8080"
+			if port := strings.TrimSpace(os.Getenv("PORT")); port != "" {
+				c.WebhookListenAddr = ":" + port
+			} else {
+				c.WebhookListenAddr = ":8080"
+			}
 		}
 		if c.WebhookSecretToken == "" || !webhookSecretPattern.MatchString(c.WebhookSecretToken) {
 			return Config{}, fmt.Errorf("WEBHOOK_SECRET_TOKEN is required and must contain 1–256 letters, digits, underscores, or hyphens")
