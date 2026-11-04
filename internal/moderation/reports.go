@@ -84,14 +84,10 @@ func ReportNotify(b *gotgbot.Bot,c *ext.Context) error {
 }
 
 func notifyModerationEvent(b *gotgbot.Bot,botID,chatID,targetID int64,action string) {
-	if auditPool==nil{return}
+	if auditPool==nil || b==nil || b.User.Id!=botID{return}
 	ctx,cancel:=context.WithTimeout(context.Background(),2*time.Second);defer cancel()
 	var enabled bool
 	err:=auditPool.QueryRow(ctx,`SELECT notifications_enabled FROM chat_report_settings WHERE bot_id=$1 AND chat_id=$2`,botID,chatID).Scan(&enabled)
 	if err!=nil||!enabled{return}
-	bot,err:=gotgbot.NewBotFromID(botID,nil)
-	if err!=nil{return}
-	_,_ = bot.SendMessage(chatID,fmt.Sprintf("🔔 Moderation event: %s\nTarget user ID: %d",action,targetID),nil)
+	_,_ = b.SendMessage(chatID,fmt.Sprintf("🔔 Moderation event: %s\nTarget user ID: %d",action,targetID),nil)
 }
-
-var _ = pgx.ErrNoRows
