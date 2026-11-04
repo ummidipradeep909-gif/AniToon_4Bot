@@ -3,7 +3,9 @@ package main
 import (
  "context"
  "log/slog"
- "os"\n "os/signal"\n "syscall"
+ "os"
+ "os/signal"
+ "syscall"
  "time"
 
  "github.com/PaulSonOfLars/gotgbot/v2"
