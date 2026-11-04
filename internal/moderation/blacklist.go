@@ -12,6 +12,8 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
+	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
 )
 
 const (
@@ -21,10 +23,14 @@ const (
 	maxBlacklistPhraseLength = 80
 )
 
-type blacklistService struct { db *pgxpool.Pool }
+type blacklistService struct {
+	db *pgxpool.Pool
+	redis *redis.Client
+	ai *aiassistant.Client
+}
 
-func RegisterBlacklistCommands(d *ext.Dispatcher, pool *pgxpool.Pool) {
-	s := &blacklistService{db: pool}
+func RegisterBlacklistCommands(d *ext.Dispatcher, pool *pgxpool.Pool, redisClient *redis.Client, aiClient *aiassistant.Client) {
+	s := &blacklistService{db: pool, redis: redisClient, ai: aiClient}
 	d.AddHandler(handlers.NewCommand("addblacklist", func(b *gotgbot.Bot, c *ext.Context) error { return s.add(b,c) }))
 	d.AddHandler(handlers.NewCommand("unblacklist", func(b *gotgbot.Bot, c *ext.Context) error { return s.remove(b,c) }))
 	d.AddHandler(handlers.NewCommand("blacklist", func(b *gotgbot.Bot, c *ext.Context) error { return s.list(b,c) }))
@@ -139,33 +145,155 @@ func (s *blacklistService) setMode(b *gotgbot.Bot,c *ext.Context) error {
 	return reply(b,c,"Blacklist action set to delete: matching messages are deleted without a warning.")
 }
 
-func (s *blacklistService) handleMessage(b *gotgbot.Bot,c *ext.Context) error {
-	m:=c.EffectiveMessage
-	if m==nil || m.From==nil || m.From.IsBot || s.db==nil{return nil}
-	text:=m.Text+"\n"+m.Caption
-	if strings.TrimSpace(text)==""{return nil}
-	ctx,cancel:=context.WithTimeout(context.Background(),3*time.Second);defer cancel()
+func normalizeBlacklistForReview(value string) string {
+	return strings.Map(func(r rune) rune {
+		switch unicode.ToLower(r) {
+		case '0':
+			return 'o'
+		case '1', '!':
+			return 'i'
+		case '3':
+			return 'e'
+		case '4', '@':
+			return 'a'
+		case '5', '$':
+			return 's'
+		case '7':
+			return 't'
+		}
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+		return -1
+	}, value)
+}
+
+// blacklistReviewCandidate is advisory-only: it detects common spacing,
+// punctuation and leetspeak variants but never changes deterministic matching.
+func blacklistReviewCandidate(text, phrase string) bool {
+	normalizedPhrase := normalizeBlacklistForReview(phrase)
+	if len([]rune(normalizedPhrase)) < 2 {
+		return false
+	}
+	return strings.Contains(normalizeBlacklistForReview(text), normalizedPhrase)
+}
+
+func blacklistAIReviewKey(botID, chatID, userID int64) string {
+	return fmt.Sprintf("anitoon4:ai-blacklist-review:%d:%d:%d", botID, chatID, userID)
+}
+
+func (s *blacklistService) reviewCooldown(ctx context.Context, key string) (bool, error) {
+	if s.redis == nil {
+		return false, nil
+	}
+	return s.redis.SetNX(ctx, key, "1", time.Minute).Result()
+}
+
+func (s *blacklistService) handleMessage(b *gotgbot.Bot, c *ext.Context) error {
+	m := c.EffectiveMessage
+	if m == nil || m.From == nil || m.From.IsBot || s.db == nil {
+		return nil
+	}
+	messageText := strings.TrimSpace(m.Text + "\n" + m.Caption)
+	if messageText == "" {
+		return nil
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
 	var mode string
-	err:=s.db.QueryRow(ctx,`SELECT mode FROM keyword_policy_configs WHERE bot_id=$1 AND chat_id=$2`,b.User.Id,m.Chat.Id).Scan(&mode)
-	if err==pgx.ErrNoRows {
-		mode=blacklistModeDelete
-	} else if err!=nil { return nil } // Fail open if policy cannot be verified.
-	rows,err:=s.db.Query(ctx,`SELECT phrase FROM keyword_blacklist WHERE bot_id=$1 AND chat_id=$2 ORDER BY length(phrase) DESC LIMIT 100`,b.User.Id,m.Chat.Id)
-	if err!=nil{return nil}
+	err := s.db.QueryRow(ctx, `SELECT mode FROM keyword_policy_configs WHERE bot_id=$1 AND chat_id=$2`, b.User.Id, m.Chat.Id).Scan(&mode)
+	if err == pgx.ErrNoRows {
+		mode = blacklistModeDelete
+	} else if err != nil {
+		return nil // Fail open if policy cannot be verified.
+	}
+
+	rows, err := s.db.Query(ctx, `SELECT phrase FROM keyword_blacklist WHERE bot_id=$1 AND chat_id=$2 ORDER BY length(phrase) DESC LIMIT 100`, b.User.Id, m.Chat.Id)
+	if err != nil {
+		return nil
+	}
 	var matched string
-	for rows.Next(){var phrase string;if rows.Scan(&phrase)!=nil{rows.Close();return nil};if containsBlacklistPhrase(text,phrase){matched=phrase;break}}
+	var reviewPhrase string
+	for rows.Next() {
+		var phrase string
+		if rows.Scan(&phrase) != nil {
+			rows.Close()
+			return nil
+		}
+		if containsBlacklistPhrase(messageText, phrase) {
+			matched = phrase
+			reviewPhrase = phrase
+			break
+		}
+		if reviewPhrase == "" && blacklistReviewCandidate(messageText, phrase) {
+			reviewPhrase = phrase
+		}
+	}
+	if rows.Err() != nil {
+		rows.Close()
+		return nil
+	}
 	rows.Close()
-	if matched==""{return nil}
-	member,err:=b.GetChatMember(m.Chat.Id,m.From.Id,nil)
-	if err!=nil || member==nil{return nil}
-	if IsChatAdmin(member.GetStatus()){return nil}
-	if err=RequireBotDeletePermission(b,m.Chat.Id);err!=nil{return nil}
-	_,err=b.DeleteMessage(m.Chat.Id,m.MessageId,nil)
-	if err!=nil{return err}
-	if mode==blacklistModeWarn {
-		_,err=s.db.Exec(ctx,`INSERT INTO chat_warnings(chat_id,user_id,actor_user_id,reason) VALUES($1,$2,$3,$4)`,m.Chat.Id,m.From.Id,b.User.Id,"Blacklisted phrase: "+matched)
-		if err!=nil{return fmt.Errorf("message deleted for blacklist phrase %q, but warning could not be recorded: %w",matched,err)}
-		_,_=b.SendMessage(m.Chat.Id,fmt.Sprintf("⚠️ User %d received a warning for a blacklisted phrase.",m.From.Id),nil)
+
+	if matched == "" && reviewPhrase == "" {
+		return nil
+	}
+	member, err := b.GetChatMember(m.Chat.Id, m.From.Id, nil)
+	if err != nil || member == nil || IsChatAdmin(member.GetStatus()) {
+		return nil
+	}
+
+	// Only exact, original substring matches reach the existing enforcement path.
+	// Similar/obfuscated candidates are sent to AI for advice and are never acted on.
+	if matched != "" {
+		if err = RequireBotDeletePermission(b, m.Chat.Id); err != nil {
+			return nil
+		}
+		if _, err = b.DeleteMessage(m.Chat.Id, m.MessageId, nil); err != nil {
+			return err
+		}
+		if mode == blacklistModeWarn {
+			_, err = s.db.Exec(ctx, `INSERT INTO chat_warnings(chat_id,user_id,actor_user_id,reason) VALUES($1,$2,$3,$4)`, m.Chat.Id, m.From.Id, b.User.Id, "Blacklisted phrase: "+matched)
+			if err != nil {
+				return fmt.Errorf("message deleted for blacklist phrase %q, but warning could not be recorded: %w", matched, err)
+			}
+			_, _ = b.SendMessage(m.Chat.Id, fmt.Sprintf("⚠️ User %d received a warning for a blacklisted phrase.", m.From.Id), nil)
+		}
+	}
+
+	// AI is advisory only. Redis is required so unavailable cooldown storage
+	// cannot accidentally turn every matching message into a provider request.
+	if s.ai == nil || s.redis == nil || reviewPhrase == "" {
+		return nil
+	}
+	cooldownCtx, cooldownCancel := context.WithTimeout(context.Background(), time.Second)
+	claimed, claimErr := s.reviewCooldown(cooldownCtx, blacklistAIReviewKey(b.User.Id, m.Chat.Id, m.From.Id))
+	cooldownCancel()
+	if claimErr != nil || !claimed {
+		return nil
+	}
+
+	matchType := "obfuscated or formatting variant (advisory candidate only)"
+	if matched != "" {
+		matchType = "exact deterministic substring match"
+	}
+	event := fmt.Sprintf("Configured blacklist phrase: %q. Match type: %s. Message text: %s", reviewPhrase, matchType, messageText)
+	aiCtx, aiCancel := context.WithTimeout(context.Background(), 3*time.Second)
+	analysis, aiErr := s.ai.Analyze(aiCtx, m.Chat.Id, m.From.Id, m.MessageId, "keyword_blacklist", event)
+	aiCancel()
+	if aiErr != nil {
+		return nil // AI failures never affect deterministic moderation.
+	}
+
+	// A likely-benign result is still useful context for an exact match; for
+	// near-matches, only send a note when AI sees credible evasion/abuse signals.
+	if analysis.Recommendation == "admin_review" || matched != "" {
+		contextNote := "AI suggests admin review"
+		if analysis.Recommendation == "allow" {
+			contextNote = "AI context assessment is likely benign; consider reviewing the blacklist rule"
+		}
+		_, _ = b.SendMessage(m.Chat.Id, fmt.Sprintf("🤖 Keyword blacklist review: %s (category: %s, confidence: %.0f%%). %s AI did not delete, ban, mute, or punish anyone.", contextNote, analysis.Category, analysis.Confidence*100, analysis.Rationale), nil)
 	}
 	return nil
 }
