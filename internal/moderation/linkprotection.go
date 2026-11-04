@@ -270,7 +270,7 @@ func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error 
 	}
 	// AI checks only extracted hostnames and a redacted message snippet. It never
 	// fetches a URL, and its advisory result cannot override the deterministic policy.
-	if s.ai != nil && len(suspicious) > 0 {
+	if s.ai != nil && blocked && len(suspicious) > 0 {
 		claimKey := fmt.Sprintf("anitoon4:ai-link-review:%d:%d:%d", b.User.Id, chatID, userID)
 		if claimed, claimErr := s.reviewCooldown(ctx, claimKey); claimErr == nil && claimed {
 			redacted := linkPattern.ReplaceAllString(m.Text+" "+m.Caption, "[link]")
