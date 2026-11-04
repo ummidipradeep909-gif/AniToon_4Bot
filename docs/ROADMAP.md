@@ -40,7 +40,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Per-bot/per-group keyword blacklist with case-insensitive text/caption matching, admin exemptions, delete/warn modes and PostgreSQL persistence (automated handler/integration tests remain required)
 
 ## Community
-- [ ] Welcome and goodbye templates
+- [x] Per-bot/per-group welcome and goodbye messages with admin commands, safe placeholders and HTML escaping
 - [ ] Rules and terms
 - [ ] Notes and custom filters
 - [ ] Reports and admin notifications
