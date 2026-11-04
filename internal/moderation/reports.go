@@ -89,5 +89,11 @@ func notifyModerationEvent(b *gotgbot.Bot,botID,chatID,targetID int64,action str
 	var enabled bool
 	err:=auditPool.QueryRow(ctx,`SELECT notifications_enabled FROM chat_report_settings WHERE bot_id=$1 AND chat_id=$2`,botID,chatID).Scan(&enabled)
 	if err!=nil||!enabled{return}
-	_,_ = b.SendMessage(chatID,fmt.Sprintf("🔔 Moderation event: %s\nTarget user ID: %d",action,targetID),nil)
+	admins,err:=b.GetChatAdministrators(chatID,nil)
+	if err!=nil{return}
+	message:=fmt.Sprintf("🔔 Moderation event in group %d: %s\\nTarget user ID: %d",chatID,action,targetID)
+	for _,admin:=range admins {
+		if admin.GetUser().IsBot { continue }
+		_,_ = b.SendMessage(admin.GetUser().Id,message,nil)
+	}
 }
