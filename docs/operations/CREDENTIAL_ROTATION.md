@@ -61,12 +61,14 @@ either service password.
    `DATABASE_URL`, and `POLICY_DATABASE_URL`. The Compose `POSTGRES_PASSWORD`
    variable is retained for future fresh-volume initialization; the role password
    was changed explicitly in the existing database.
-5. Recreate the consumers with the updated URLs:
+5. Verify the new database password over TCP, which exercises password
+   authentication rather than the local container socket:
    ```sh
-   docker compose --env-file .env.production -f compose.production.yaml up -d bot policy
+   docker compose --env-file .env.production -f compose.production.yaml exec postgres psql -h 127.0.0.1 -U anitoon4 -d anitoon4 -W -c 'SELECT 1'
    ```
-6. Confirm policy health and inspect application logs for successful connections.
-   Do not proceed to Redis rotation if PostgreSQL authentication is failing.
+   Enter the new password at the prompt. Keep `bot` and `policy` stopped until
+   the Redis password has also been rotated; the application URLs have already
+   been staged with both new credentials.
 
 ## 3. Rotate Redis
 
@@ -87,7 +89,8 @@ either service password.
    docker compose --env-file .env.production -f compose.production.yaml exec -T redis sh -ec 'REDISCLI_AUTH="$REDIS_PASSWORD" redis-cli ping'
    ```
    The expected response is `PONG`.
-5. Recreate both consumers:
+5. Recreate both consumers only after PostgreSQL and Redis rotations have both
+   succeeded:
    ```sh
    docker compose --env-file .env.production -f compose.production.yaml up -d bot policy
    ```
