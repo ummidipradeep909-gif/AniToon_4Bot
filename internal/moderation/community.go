@@ -224,9 +224,14 @@ func (s *communityService) listFilters(b *gotgbot.Bot, c *ext.Context) error {
 	return reply(b,c,"🔎 Custom filters (first 50):\n"+strings.Join(triggers,"\n"))
 }
 
+func matchesCustomFilter(messageText, trigger string) bool {
+	normalized := strings.TrimSpace(messageText)
+	return normalized != "" && !strings.HasPrefix(normalized, "/") && strings.EqualFold(normalized, trigger)
+}
+
 func (s *communityService) handleFilter(b *gotgbot.Bot,c *ext.Context) error {
 	m:=c.EffectiveMessage
-	if m==nil||m.From==nil||m.From.IsBot||m.Chat==nil||(m.Chat.Type!="group"&&m.Chat.Type!="supergroup")||s.db==nil{return nil}
+	if m==nil||m.From==nil||m.From.IsBot||(m.Chat.Type!="group"&&m.Chat.Type!="supergroup")||s.db==nil{return nil}
 	text:=strings.TrimSpace(m.Text)
 	if text==""{text=strings.TrimSpace(m.Caption)}
 	if text==""||strings.HasPrefix(text,"/"){return nil}
