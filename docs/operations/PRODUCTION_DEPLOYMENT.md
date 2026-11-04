@@ -46,27 +46,31 @@ only the configured webhook path to the bot listener. Polling is the default.
 - Rotate the Telegram primary bot token through BotFather and update the deployment
   secret before restarting the single bot instance. Coordinate the restart to avoid
   two pollers using the same token.
-- Rotate PostgreSQL and Redis passwords with a maintenance window and update all
-  dependent connection URLs together. Validate connections before removing the old
-  credentials. The supplied Compose profile does not implement dual-credential
-  overlap or zero-downtime rotation.
+- PostgreSQL and Redis password rotation is an operator-driven maintenance task
+  that interrupts the bot and policy service briefly. Follow the staged
+  [PostgreSQL and Redis credential rotation runbook](CREDENTIAL_ROTATION.md).
+  Changing `POSTGRES_PASSWORD` alone does not change the password stored in an
+  existing PostgreSQL data volume; the runbook explicitly changes the database role.
+- The runbook updates the Go bot and Python policy service connection URLs together,
+  verifies both dependencies, and documents rollback. It does not provide
+  dual-credential overlap or zero-downtime rotation.
 - `CLONE_ENCRYPTION_KEY` is not an ordinary environment secret: changing it
   immediately makes existing encrypted clone tokens unreadable. Do not change it
   until a tested, transactional key-version/keyring migration is implemented.
   Keep a recoverable escrow copy separate from database backups.
-- This change does not claim automatic key rotation, clone-token re-encryption,
-  a multi-host polling lease, or zero-downtime credential rotation. Those require
-  a dedicated follow-up implementation and recovery tests.
+- No automatic secret rotation, secret-manager integration, multi-host polling
+  lease, or zero-downtime credential rotation is claimed.
 
 ## Rollback
 
-1. Stop the bot service before changing versions or credentials:
-   `docker compose --env-file .env.production -f compose.production.yaml stop bot`.
-2. Restore the previous image/configuration and the matching database backup if a
+1. Stop the bot and policy service before changing database/cache credentials.
+2. Follow the credential-specific rollback steps in
+   [CREDENTIAL_ROTATION.md](CREDENTIAL_ROTATION.md).
+3. Restore the previous image/configuration and the matching database backup if a
    migration rollback is required.
-3. Restore the matching `CLONE_ENCRYPTION_KEY` escrow value with the database.
-4. Start services and verify health, clone recovery, and moderation commands.
-5. Do not delete persistent volumes as a rollback technique.
+4. Restore the matching `CLONE_ENCRYPTION_KEY` escrow value with the database.
+5. Start services and verify health, clone recovery, and moderation commands.
+6. Do not delete persistent volumes as a rollback technique.
 
 ## Operational limitations
 

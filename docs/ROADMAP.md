@@ -55,5 +55,8 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] PostgreSQL backup/restore guide covering encrypted dumps, clone-key escrow, isolated restore validation, migrations and rollback
 - [x] Embedded PostgreSQL migration runner with numeric ordering, transactional execution, advisory locking, checksum/history validation, startup fail-fast behavior and PostgreSQL integration tests
 - [x] Primary-bot webhook mode with HTTPS URL/secret validation, platform PORT support, clone polling compatibility and SIGINT/SIGTERM graceful updater shutdown
+- [x] Hardened single-host production Compose profile for private PostgreSQL/Redis, health-gated dependencies, persistent volumes, and container hardening
+- [x] Operator-driven PostgreSQL and Redis password rotation runbook with maintenance sequencing, dependency validation and rollback
+- [ ] Automated/zero-downtime credential rotation with dual credentials and secret-manager integration
 - [ ] Load, abuse and recovery tests
-- [ ] Production deployment profiles and secret rotation
+- [ ] Multi-instance deployment readiness and distributed clone polling leases
