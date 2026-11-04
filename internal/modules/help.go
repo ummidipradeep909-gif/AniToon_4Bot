@@ -38,6 +38,12 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /unblacklist <phrase> — remove a blacklist phrase
 /blacklist — list blocked phrases
 /blacklistmode [delete|warn] — choose the action
+/welcome [on|off] — enable or show welcome messages
+/setwelcome <text> — set a welcome template
+/resetwelcome — restore the default welcome template
+/goodbye [on|off] — enable or show goodbye messages
+/setgoodbye <text> — set a goodbye template
+/resetgoodbye — restore the default goodbye template
 
 /modlog [count] — show recent moderation actions (1–20)
 
