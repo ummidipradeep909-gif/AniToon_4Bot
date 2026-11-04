@@ -6,6 +6,15 @@ ALTER TABLE chat_filters
 ALTER TABLE chat_filters
     DROP CONSTRAINT IF EXISTS chat_filters_chat_id_trigger_key;
 
+-- Existing trigger uniqueness was case-sensitive. Remove case-only duplicates before
+-- installing the case-insensitive per-bot index; keep the most recently updated row.
+DELETE FROM chat_filters older
+USING chat_filters newer
+WHERE older.bot_id = newer.bot_id
+  AND older.chat_id = newer.chat_id
+  AND lower(older.trigger) = lower(newer.trigger)
+  AND (older.created_at, older.id) < (newer.created_at, newer.id);
+
 CREATE UNIQUE INDEX IF NOT EXISTS chat_filters_bot_chat_trigger_uidx
     ON chat_filters (bot_id, chat_id, lower(trigger));
 
