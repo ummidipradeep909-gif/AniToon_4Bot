@@ -29,7 +29,7 @@ func main() {
  if err!=nil { logger.Error("could not initialise Telegram bot","error",err); os.Exit(1) }
 
  var redisClient *redis.Client
- redisURL:=os.Getenv("REDIS_URL")
+ redisURL:=cfg.RedisURL
  if redisURL!="" {
   redisOpts,parseErr:=redis.ParseURL(redisURL)
   if parseErr==nil {
@@ -39,13 +39,14 @@ func main() {
    cancel()
   } else { err=parseErr }
   if err!=nil {
-   logger.Error("Redis unavailable; anti-flood and slow-mode detection will be disabled","error",err)
+   logger.Error("Redis unavailable; refusing startup","error",err)
+   os.Exit(1)
    if redisClient!=nil { _=redisClient.Close(); redisClient=nil }
   } else { logger.Info("Redis connected"); defer redisClient.Close() }
- } else { logger.Warn("REDIS_URL is empty; anti-flood detection will be disabled") }
+ } else { logger.Error("Redis unavailable; refusing startup"); os.Exit(1) }
 
  var db *pgxpool.Pool
- databaseURL:=os.Getenv("DATABASE_URL")
+ databaseURL:=cfg.DatabaseURL
  if databaseURL!="" {
   db,err=pgxpool.New(context.Background(),databaseURL)
   if err==nil {
@@ -54,7 +55,8 @@ func main() {
    cancel()
   }
   if err!=nil {
-   logger.Error("PostgreSQL unavailable; warning, lock, anti-flood, anti-raid and slow-mode configuration commands will be disabled","error",err)
+   logger.Error("PostgreSQL unavailable; refusing startup","error",err)
+   os.Exit(1)
    if db!=nil { db.Close(); db=nil }
   } else {
    logger.Info("PostgreSQL connected")
@@ -69,9 +71,7 @@ func main() {
    logger.Info("database migrations applied")
    defer db.Close()
   }
- } else {
-  logger.Warn("DATABASE_URL is empty; warning, lock, anti-flood and slow-mode configuration commands will be disabled")
- }
+ } else { logger.Error("PostgreSQL unavailable; refusing startup"); os.Exit(1) }
 
  dispatcher:=ext.NewDispatcher(&ext.DispatcherOpts{
   Error:func(_ *gotgbot.Bot,_ *ext.Context,err error) ext.DispatcherAction {
@@ -90,7 +90,7 @@ func main() {
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
- aiClient := aiassistant.NewClient(os.Getenv("POLICY_SERVICE_URL"), os.Getenv("AI_SERVICE_TOKEN"))
+ aiClient := aiassistant.NewClient(cfg.PolicyServiceURL, cfg.AIServiceToken)
  moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db,redisClient,aiClient)
@@ -99,7 +99,7 @@ func main() {
  moderation.RegisterGreetingCommands(dispatcher,db)
  moderation.RegisterRulesCommands(dispatcher,db)
  moderation.RegisterCommunityCommands(dispatcher,db)
- cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,os.Getenv("CLONE_ENCRYPTION_KEY"))
+ cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,cfg.CloneEncryptionKey)
  cloneManager.Register(dispatcher)
  recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),30*time.Second)
  cloneManager.Recover(recoveryCtx)
