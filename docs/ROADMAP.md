@@ -46,7 +46,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] AI-assisted anti-raid review using aggregate join telemetry
 - [x] AI-assisted phishing review for blocked links (admin suggestion only)
 - [x] AI-assisted contextual keyword blacklist review with evasion candidates and Redis cooldown (admin suggestion only)
-- [ ] Notes and custom filters
+- [x] Per-bot/per-group named notes and exact-match custom reply filters with admin-managed CRUD
 - [ ] Reports and admin notifications
 - [ ] User information and admin list
 

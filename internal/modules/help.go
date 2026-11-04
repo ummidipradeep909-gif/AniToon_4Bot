@@ -53,6 +53,15 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /privaterules — send the rules to your private chat
 /clearrules — remove this bot's rules for this group (admin only)
 
+<b>Notes and custom filters</b>
+/save <name> <content> — save or update a group note (admin only)
+/get <name> — retrieve a saved note
+/notes — list saved note names
+/clear <name> — delete a saved note (admin only)
+/filter add <trigger> <response> — create or update an exact-match reply (admin only)
+/filter remove <trigger> — remove a custom filter (admin only)
+/filters — list custom filter triggers (admin only)
+
 /modlog [count] — show recent moderation actions (1–20)
 
-Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented.`
+Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented. Notes and filters are isolated by bot and group. Apply migration 014 to existing databases.`
