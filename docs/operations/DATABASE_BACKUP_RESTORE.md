@@ -100,7 +100,7 @@ A restore should be rehearsed against a fresh database or isolated PostgreSQL in
      -c "SELECT COUNT(*) AS clone_credentials FROM clone_credentials;"
    ```
 
-   This repository currently ships ordered SQL files under `migrations/`; it does not yet provide a dedicated migration runner or a schema-migrations tracking table. Compare the restored schema with the ordered migration files for the application revision being restored. For example, `clone_credentials` should include the `enabled` column after migration 013. Do not infer that a restore failed merely because no migration ledger exists.
+   The Go application now maintains a `schema_migrations` ledger with numeric version, filename, SHA-256 checksum and application timestamp. Verify it with `SELECT version, filename, checksum, applied_at FROM schema_migrations ORDER BY version;`. A fresh database should show the complete ordered migration set for the application revision. The runner validates checksums and fails startup if a previously applied migration was edited; do not infer that a restore failed solely because a dump from an older release has no migration ledger. After restoring an older backup, deploy the matching application revision and let the runner apply the remaining compatible migrations. Always rehearse this upgrade on an isolated restore first.
 
 5. Restore the exact matching `CLONE_ENCRYPTION_KEY` and runtime secrets through the secret manager. Point both the Go bot and Python policy service at the restored database (the Compose policy service's `DATABASE_URL` is currently configured in `docker-compose.yml`; update that configuration as part of the controlled cutover). Recreate/restart the services only after validating the configuration.
 6. Check application startup logs for PostgreSQL connectivity, clone credential decryption/recovery, and migration/schema errors. Logs must not contain tokens or encryption key material.
@@ -120,7 +120,7 @@ A restore should be rehearsed against a fresh database or isolated PostgreSQL in
 - Docker's `/docker-entrypoint-initdb.d` scripts run only when the PostgreSQL data directory is first initialized. Adding a new SQL file to `migrations/` does **not** automatically apply it to an existing named volume.
 - The current Compose setup mounts `./migrations` into the PostgreSQL initialization directory. For an existing installation, inspect the SQL and apply the required migration files explicitly in their documented numeric order using an authorized operator and a maintenance window.
 - Do not blindly re-run every SQL file on an existing database. Check whether each statement is safe/idempotent and whether the migration has already been applied.
-- The project roadmap tracks a dedicated migration runner as separate future work. Until it exists, maintain a written record of applied migration filenames and the Git commit used.
+- The Go bot applies embedded migrations automatically after PostgreSQL connectivity is confirmed. If migration execution fails, the bot refuses to start so it cannot operate against a partially upgraded schema. The Python policy service does not run migrations independently.
 - A PostgreSQL logical dump does not back up Docker volume metadata, host configuration, TLS certificates or secret-manager contents. Back those up separately where applicable.
 
 ## Suggested backup schedule and retention

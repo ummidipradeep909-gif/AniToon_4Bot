@@ -63,7 +63,7 @@ Generate the key once:
 
 Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
 
-Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
+On startup, the Go bot now runs all embedded SQL migrations in numeric order after connecting to PostgreSQL. The runner records each version and SHA-256 checksum in `schema_migrations`, serializes concurrent runners with a PostgreSQL advisory lock, and stops startup if a migration fails or an already-applied migration file has changed. Back up the database before upgrading; do not edit released migration files—add a new numbered migration instead.
 
 ## Database backup and restore
 
@@ -216,6 +216,29 @@ Only numeric IDs and reply targets are supported. Usernames are not resolved. Co
 ## Not implemented yet
 
 Automated scheduled report delivery and log-channel routing remain future enhancements. The metrics command summarizes confirmed PostgreSQL audit events and does not claim complete telemetry for automated protection events. The Python policy endpoint is telemetry only and does not automatically punish users.
+
+## Webhook deployment and graceful shutdown
+
+Polling remains the default. To run the primary bot behind an HTTPS reverse proxy, set:
+
+```env
+BOT_MODE=webhook
+WEBHOOK_URL=https://bot.example.com
+WEBHOOK_PATH=/telegram/webhook
+WEBHOOK_SECRET_TOKEN=<generate-a-random-secret>
+# Optional; defaults to :$PORT when PORT is set, otherwise :8080
+WEBHOOK_LISTEN_ADDR=
+```
+
+- `WEBHOOK_URL` is the public HTTPS base URL; the configured path is appended to it.
+- The Go process listens on `WEBHOOK_LISTEN_ADDR` (or the platform `PORT`) behind a TLS-terminating reverse proxy. Forward the exact webhook path to this listener and do not expose it without HTTPS at the public edge.
+- The secret token is required and validated against Telegram's allowed characters. Telegram sends it in the `X-Telegram-Bot-Api-Secret-Token` header; the Gotgbot webhook handler validates it.
+- Do not put the webhook secret in the URL, logs, or source control. Store it in the deployment secret manager.
+- The primary bot receives webhook updates; persisted clone bots continue using polling on the shared updater. The deployment must allow outbound HTTPS to Telegram and inbound HTTPS through the proxy.
+- Send SIGTERM (normal container stop) or SIGINT to initiate graceful shutdown. The updater stops the webhook server and all primary/clone update loops, then PostgreSQL and Redis connections close.
+- For a reverse proxy, configure a suitable request-body limit and forward requests only to the bot's listener. Do not configure Telegram to call the internal listener address directly.
+
+When switching from polling to webhook mode, deploy one instance only and ensure no other host is polling the primary bot token. When switching back to polling, Gotgbot removes the webhook before polling starts. Do not run multiple replicas with the same primary or clone bot tokens; distributed ownership/leases are not implemented.
 
 ## Development
 
