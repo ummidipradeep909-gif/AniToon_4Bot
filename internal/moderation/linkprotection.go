@@ -13,6 +13,7 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
+	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -21,6 +22,7 @@ type linkPolicyService struct {
 	db *pgxpool.Pool
 	mu sync.RWMutex
 	adminCache map[string]linkAdminCacheEntry
+	ai *aiassistant.Client
 }
 
 type linkAdminCacheEntry struct {
@@ -30,8 +32,8 @@ type linkAdminCacheEntry struct {
 
 var linkPattern = regexp.MustCompile(`(?i)(?:https?://|tg://|www\.)[^\s<>()]+|(?:t\.me|telegram\.me)/[^\s<>()]+|(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}(?:/[^\s<>()]*)?`)
 
-func RegisterLinkProtectionCommands(d *ext.Dispatcher, pool *pgxpool.Pool) {
-	s := &linkPolicyService{db: pool, adminCache: make(map[string]linkAdminCacheEntry)}
+func RegisterLinkProtectionCommands(d *ext.Dispatcher, pool *pgxpool.Pool, aiClient *aiassistant.Client) {
+	s := &linkPolicyService{db: pool, adminCache: make(map[string]linkAdminCacheEntry), ai: aiClient}
 	d.AddHandler(handlers.NewCommand("antilink", func(b *gotgbot.Bot, c *ext.Context) error { return s.configure(b, c) }))
 	d.AddHandler(handlers.NewCommand("allowlink", func(b *gotgbot.Bot, c *ext.Context) error { return s.allowlistCommand(b, c) }))
 	d.AddHandler(handlers.NewMessage(func(m *gotgbot.Message) bool {
@@ -230,6 +232,12 @@ func (s *linkPolicyService) isAdmin(b *gotgbot.Bot, chatID, userID int64) bool {
 	return admin
 }
 
+func (s *linkPolicyService) reviewCooldown(ctx context.Context, key string) (bool, error) {
+	// Redis is optional for the base link policy. If it is unavailable, do not
+	// issue AI calls repeatedly; return false and keep deterministic protection.
+	return false, nil
+}
+
 func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error {
 	m := c.EffectiveMessage
 	if m == nil || m.From == nil || m.MessageId <= 0 || s.db == nil { return nil }
@@ -249,11 +257,28 @@ func (s *linkPolicyService) handleMessage(b *gotgbot.Bot, c *ext.Context) error 
 	for rows.Next() { var domain string; if rows.Scan(&domain) != nil { return nil }; allowedDomains = append(allowedDomains, domain) }
 	if rows.Err() != nil { return nil }
 	blocked := false
+	suspicious := make([]string, 0, len(links))
 	for _, link := range links {
 		if isTelegramInviteLink(link) { blocked = true; break }
 		host, _, ok := linkHost(link)
 		if !ok { continue }
-		if !domainAllowed(host, allowedDomains) { blocked = true; break }
+		if !domainAllowed(host, allowedDomains) { blocked = true }
+		suspicious = append(suspicious, host)
+	}
+	// AI checks only extracted hostnames and a redacted message snippet. It never
+	// fetches a URL, and its advisory result cannot override the deterministic policy.
+	if s.ai != nil && len(suspicious) > 0 {
+		claimKey := fmt.Sprintf("anitoon4:ai-link-review:%d:%d:%d", b.User.Id, chatID, userID)
+		if claimed, claimErr := s.reviewCooldown(ctx, claimKey); claimErr == nil && claimed {
+			redacted := linkPattern.ReplaceAllString(m.Text+" "+m.Caption, "[link]")
+			event := fmt.Sprintf("Extracted link hostnames: %s. Message context: %s", strings.Join(uniqueStrings(suspicious), ", "), strings.TrimSpace(redacted))
+			aiCtx, aiCancel := context.WithTimeout(ctx, 3*time.Second)
+			analysis, aiErr := s.ai.Analyze(aiCtx, chatID, userID, m.MessageId, "link_protection", event)
+			aiCancel()
+			if aiErr == nil && analysis.Recommendation == "admin_review" && analysis.Category == "phishing" {
+				_, _ = b.SendMessage(chatID, fmt.Sprintf("🤖 AI link review: possible phishing indicators (confidence %.0f%%). %s AI did not take action.", analysis.Confidence*100, analysis.Rationale), nil)
+			}
+		}
 	}
 	if !blocked { return nil }
 	_, deleteErr := b.DeleteMessage(chatID, m.MessageId, nil)
