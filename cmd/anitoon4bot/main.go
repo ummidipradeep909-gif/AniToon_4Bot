@@ -79,6 +79,7 @@ func main() {
  moderation.RegisterLinkProtectionCommands(dispatcher,db)
  moderation.RegisterForwardProtectionCommands(dispatcher,db)
  moderation.RegisterBlacklistCommands(dispatcher,db)
+ moderation.RegisterGreetingCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,os.Getenv("CLONE_ENCRYPTION_KEY"))
  cloneManager.Register(dispatcher)
  recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),30*time.Second)
