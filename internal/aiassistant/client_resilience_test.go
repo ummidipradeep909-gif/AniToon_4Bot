@@ -3,6 +3,7 @@ package aiassistant
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -26,27 +27,21 @@ func TestAnalyzeTruncatesOversizedUnicodeMessageByRunes(t *testing.T) {
 }
 
 func TestAnalyzeHonorsCallerTimeout(t *testing.T) {
-	releaseHandler := make(chan struct{})
-	server:=httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
-		<-releaseHandler
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Consume the request body before waiting for cancellation. If the
+		// handler waits first, the client may still be writing the body and
+		// cancellation may not reach the server handler promptly.
+		_, _ = io.Copy(io.Discard, r.Body)
+		<-r.Context().Done()
 	}))
-	defer func() {
-		close(releaseHandler)
-		server.Close()
-	}()
-	client:=NewClient(server.URL,"test-service-token")
-	ctx,cancel:=context.WithCancel(context.Background())
-	result:=make(chan error,1)
-	go func() {
-		_,err:=client.Analyze(ctx,1,2,3,"anti_flood","burst")
-		result<-err
-	}()
-	cancel()
-	select {
-	case err:=<-result:
-		if err==nil { t.Fatal("expected caller cancellation to abort AI request") }
-	case <-time.After(time.Second):
-		t.Fatal("AI request did not return promptly after caller cancellation")
+	defer server.Close()
+
+	client := NewClient(server.URL, "test-service-token")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	if _, err := client.Analyze(ctx, 1, 2, 3, "anti_flood", "burst"); err == nil {
+		t.Fatal("expected caller deadline to abort AI request")
 	}
 }
 
