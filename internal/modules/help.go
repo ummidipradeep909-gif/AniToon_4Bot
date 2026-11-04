@@ -44,7 +44,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /goodbye [on|off] — enable or show goodbye messages
 /setgoodbye <text> — set a goodbye template
 /resetgoodbye — restore the default goodbye template
-/setrules [text] — set this group's rules (admin only)
+/setrules [rules text] — set this group's rules (admin only)
 /rules — display this group's rules
 /privaterules — send the rules to your private chat
 /clearrules — remove this bot's rules for this group (admin only)
