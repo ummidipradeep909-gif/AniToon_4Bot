@@ -57,6 +57,19 @@ Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It
 
 Apply `migrations/010_clone_credentials.sql` to existing databases before deploying this version. New Docker-managed databases run it during initialisation.
 
+## Welcome and goodbye messages
+
+Welcome and goodbye settings are isolated by the current bot ID and group ID. Each clone can therefore use different templates in the same group.
+
+- `/welcome` and `/goodbye` show the current state; use `/welcome on|off` and `/goodbye on|off` to toggle them.
+- `/setwelcome <text>` and `/setgoodbye <text>` set custom templates; `/resetwelcome` and `/resetgoodbye` restore the defaults.
+- Available placeholders: `{first}`, `{last}`, `{fullname}`, `{username}`, `{mention}`, `{id}`, and `{chatname}`.
+- User and group values are HTML-escaped. Templates are plain text, up to 1000 characters.
+- Only verified group administrators can change settings. Bots are not greeted. Membership promotions and restriction changes do not trigger greetings.
+- Messages require Telegram `chat_member` updates and bot permission to send messages.
+
+Apply `migrations/011_greetings.sql` to existing databases. New Docker-managed databases run it during initialisation.
+
 ## Purge and delete commands
 
 - Reply to a message with /del to delete only that message.
