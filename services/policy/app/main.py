@@ -18,7 +18,7 @@ async def lifespan(app: FastAPI):
         await app.state.redis.aclose()
         await app.state.pg.close()
 
-app = FastAPI(title="AniToon_4Bot Policy Service", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="AniToon_4Bot Policy Service", version="0.4.0", lifespan=lifespan)
 
 class MessageSignal(BaseModel):
     chat_id: int
@@ -64,7 +64,7 @@ async def ai_analyze(request: AIAnalysisRequest, x_ai_service_token: str = Heade
         raise HTTPException(status_code=503, detail="AI assistance is not configured")
     try:
         result = await analyze_message(request.text, api_key=settings.openai_api_key,
-                                       model=settings.openai_model,
+                                       model=settings.openai_model, feature=request.feature,
                                        timeout_seconds=settings.ai_timeout_seconds)
     except RuntimeError as exc:
         raise HTTPException(status_code=502, detail="AI analysis unavailable") from exc
