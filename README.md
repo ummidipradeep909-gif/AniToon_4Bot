@@ -63,7 +63,7 @@ Generate the key once:
 
 Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It must be a stable base64-encoded 32-byte key: do not regenerate it during normal deployments or restarts. Back it up securely, separately from the database backup. Losing or changing the key makes every saved clone token unrecoverable; restoring PostgreSQL without the matching key is insufficient.
 
-Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
+On startup, the Go bot now runs all embedded SQL migrations in numeric order after connecting to PostgreSQL. The runner records each version and SHA-256 checksum in `schema_migrations`, serializes concurrent runners with a PostgreSQL advisory lock, and stops startup if a migration fails or an already-applied migration file has changed. Back up the database before upgrading; do not edit released migration files—add a new numbered migration instead.
 
 ## Database backup and restore
 
