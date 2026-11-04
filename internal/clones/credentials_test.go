@@ -31,10 +31,14 @@ func TestPostgresCloneCredentialUniqueness(t *testing.T) {
 
 	insert := `INSERT INTO clone_credentials (bot_id, owner_id, encrypted_token, nonce) VALUES ($1,$2,$3,$4)`
 	if _, err = tx.Exec(ctx, insert, int64(100), int64(200), []byte("cipher"), make([]byte,12)); err != nil { t.Fatal(err) }
-	if _, err = conn.Exec(ctx, insert, int64(101), int64(200), []byte("cipher"), make([]byte,12)); err == nil {
+	if _, err = tx.Exec(ctx, "SAVEPOINT duplicate_owner"); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, insert, int64(101), int64(200), []byte("cipher"), make([]byte,12)); err == nil {
 		t.Fatal("PostgreSQL accepted a second clone for the same owner")
 	}
-	if _, err = conn.Exec(ctx, insert, int64(100), int64(201), []byte("cipher"), make([]byte,12)); err == nil {
+	if _, err = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT duplicate_owner"); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, "SAVEPOINT duplicate_bot"); err != nil { t.Fatal(err) }
+	if _, err = tx.Exec(ctx, insert, int64(100), int64(201), []byte("cipher"), make([]byte,12)); err == nil {
 		t.Fatal("PostgreSQL accepted a duplicate clone bot ID")
 	}
+	if _, err = tx.Exec(ctx, "ROLLBACK TO SAVEPOINT duplicate_bot"); err != nil { t.Fatal(err) }
 }
