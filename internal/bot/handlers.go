@@ -1,7 +1,8 @@
 package bot
 
 import (
- "fmt"\n "html"\n "strings"
+ "fmt"
+ "html"\n "strings"
 
  "github.com/PaulSonOfLars/gotgbot/v2"
  "github.com/PaulSonOfLars/gotgbot/v2/ext"
