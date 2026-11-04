@@ -96,6 +96,7 @@ services:
       dockerfile: Dockerfile
     environment:
       BOT_TOKEN: ${BOT_TOKEN:-}
+      BOT_OWNER_ID: ${BOT_OWNER_ID:-}
       BOT_MODE: ${BOT_MODE:-polling}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DATABASE_URL: ${DATABASE_URL:-}

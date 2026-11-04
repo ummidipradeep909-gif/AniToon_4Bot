@@ -100,6 +100,7 @@ func main() {
  moderation.RegisterRulesCommands(dispatcher,db)
  moderation.RegisterCommunityCommands(dispatcher,db)
  cloneManager:=clones.NewManager(updater,b.User.Id,logger,db,cfg.CloneEncryptionKey)
+ moderation.RegisterOwnerDashboard(dispatcher,cfg.OwnerID,db,redisClient,cloneManager)
  cloneManager.Register(dispatcher)
  healthCtx,healthCancel:=context.WithCancel(context.Background())
  defer healthCancel()

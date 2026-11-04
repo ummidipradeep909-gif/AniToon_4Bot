@@ -359,3 +359,13 @@ func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
 	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone has been removed and its encrypted credentials deleted. To create another, use /clone.",nil)
 	return err
 }
+
+
+// HealthSummary returns aggregate clone health counts without exposing credentials or owner data.
+func (m *Manager) HealthSummary() (total, running, degraded, recovering int) {
+ m.mu.Lock(); defer m.mu.Unlock()
+ total=len(m.owners)
+ for id,active:=range m.active { if active { running++; if m.health[id].Status=="degraded" { degraded++ } } }
+ for id,h:=range m.health { if !m.active[id] && h.Status!="paused" && h.Status!="" { recovering++ } }
+ return
+}
