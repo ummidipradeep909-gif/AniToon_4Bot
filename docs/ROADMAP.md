@@ -41,7 +41,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 
 ## Community
 - [x] Per-bot/per-group welcome and goodbye messages with admin commands, safe placeholders and HTML escaping
-- [ ] Rules and terms
+- [x] Per-bot/per-group persistent group rules with admin configuration and private delivery
 - [ ] Notes and custom filters
 - [ ] Reports and admin notifications
 - [ ] User information and admin list
