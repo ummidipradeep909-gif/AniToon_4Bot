@@ -63,5 +63,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /filters — list custom filter triggers (admin only)
 
 /modlog [count] — show recent moderation actions (1–20)
+/report [day|week] — moderation summary for the last 24 hours or 7 days (admin only)
+/reportnotify on|off — enable or disable moderation event alerts (admin only)
 
 Moderation commands require you to be a group administrator. The bot must have the relevant administrator permissions. Warning history is stored per group in PostgreSQL. Three warnings trigger an admin review notice only; there is no automatic punishment. Clone setup is available only in the main AniToon bot's private chat. Anonymous-admin commands are intentionally rejected until a safe actor-verification flow is implemented. Notes and filters are isolated by bot and group. Apply migration 014 to existing databases.`
