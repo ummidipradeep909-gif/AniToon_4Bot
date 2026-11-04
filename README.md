@@ -65,6 +65,10 @@ Set the resulting value as `CLONE_ENCRYPTION_KEY` in the runtime environment. It
 
 Apply `migrations/010_clone_credentials.sql` and then `migrations/013_clone_lifecycle.sql` to existing databases before deploying this version. New Docker-managed databases run them during initialisation.
 
+## Database backup and restore
+
+See the [PostgreSQL backup and restore guide](docs/operations/DATABASE_BACKUP_RESTORE.md) for encrypted backups, clone encryption key escrow, isolated restore validation, migration handling, production cutover and rollback procedures. **Keep `CLONE_ENCRYPTION_KEY` separately and securely:** a database dump alone cannot recover saved clone bot tokens.
+
 ## Welcome and goodbye messages
 
 Welcome and goodbye settings are isolated by the current bot ID and group ID. Each clone can therefore use different templates in the same group.
