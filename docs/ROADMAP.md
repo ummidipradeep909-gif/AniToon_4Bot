@@ -51,7 +51,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] User information, reply/numeric-ID lookup, expanded chat/user ID output and live group administrator list (Telegram does not expose private contact details or reliable join dates through these methods)
 
 ## Operations
-- [ ] Structured moderation metrics
+- [x] Admin-only aggregate moderation metrics by day/week/month from confirmed audit records (automated protection-event telemetry remains separate)
 - [ ] Database backup and restore guide
 - [ ] Migration runner
 - [ ] Webhook mode and graceful shutdown
