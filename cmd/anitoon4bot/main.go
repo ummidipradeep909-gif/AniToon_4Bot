@@ -11,6 +11,7 @@ import (
  "github.com/jackc/pgx/v5/pgxpool"
  "github.com/redis/go-redis/v9"
 
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/aiassistant"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/config"
@@ -74,7 +75,8 @@ func main() {
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
- moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient)
+ aiClient := aiassistant.NewClient(os.Getenv("POLICY_SERVICE_URL"), os.Getenv("AI_SERVICE_TOKEN"))
+ moderation.RegisterAntiFloodCommands(dispatcher,db,redisClient,aiClient)
  moderation.RegisterAntiRaidCommands(dispatcher,db,redisClient)
  moderation.RegisterLinkProtectionCommands(dispatcher,db)
  moderation.RegisterForwardProtectionCommands(dispatcher,db)
