@@ -72,6 +72,7 @@ func main() {
  clones.RegisterCommands(dispatcher)
  moderation.RegisterWarningCommands(dispatcher,db)
  moderation.RegisterAuditCommands(dispatcher,db)
+ moderation.RegisterReportCommands(dispatcher)
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
