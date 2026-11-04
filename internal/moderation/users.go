@@ -61,6 +61,11 @@ func formatAdminList(admins []gotgbot.ChatMember) string {
 			if merged.CustomTitle != "" {
 				role += " (" + merged.CustomTitle + ")"
 			}
+		} else if member.GetStatus() == StatusAdmin {
+			merged := member.MergeChatMember()
+			if merged.CustomTitle != "" {
+				role += " (" + merged.CustomTitle + ")"
+			}
 		}
 		name := compactName(user)
 		if user.Username != "" {
