@@ -15,7 +15,7 @@ import (
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/clones"
  "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/config"
- "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/moderation"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/moderation"\n "github.com/ummidipradeep909-gif/AniToon_4Bot/migrations"
 )
 
 func main() {
@@ -55,6 +55,15 @@ func main() {
    if db!=nil { db.Close(); db=nil }
   } else {
    logger.Info("PostgreSQL connected")
+   migrationCtx,migrationCancel:=context.WithTimeout(context.Background(),5*time.Minute)
+   migrationErr:=migrations.Apply(migrationCtx,db)
+   migrationCancel()
+   if migrationErr!=nil {
+    logger.Error("database migrations failed; refusing to start bot","error",migrationErr)
+    db.Close()
+    os.Exit(1)
+   }
+   logger.Info("database migrations applied")
    defer db.Close()
   }
  } else {
