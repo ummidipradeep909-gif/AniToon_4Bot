@@ -1,7 +1,7 @@
 package bot
 
 import (
- "fmt"
+ "fmt"\n "strings"
 
  "github.com/PaulSonOfLars/gotgbot/v2"
  "github.com/PaulSonOfLars/gotgbot/v2/ext"
@@ -31,8 +31,27 @@ func Help(b *gotgbot.Bot,ctx *ext.Context) error {
 
 func ID(b *gotgbot.Bot,ctx *ext.Context) error {
  var chatID,userID int64
- if ctx.EffectiveChat!=nil { chatID=ctx.EffectiveChat.Id }
+ chatType:="unknown"
+ chatTitle:=""
+ if ctx.EffectiveChat!=nil {
+  chatID=ctx.EffectiveChat.Id
+  chatType=ctx.EffectiveChat.Type
+  chatTitle=ctx.EffectiveChat.Title
+ }
  if ctx.EffectiveUser!=nil { userID=ctx.EffectiveUser.Id }
- _,err:=ctx.EffectiveMessage.Reply(b,fmt.Sprintf("<b>Chat ID:</b> <code>%d</code>\n<b>Your ID:</b> <code>%d</code>",chatID,userID),&gotgbot.SendMessageOpts{ParseMode:"HTML"})
+ targetLine:=fmt.Sprintf("<b>Your ID:</b> <code>%d</code>",userID)
+ if ctx.EffectiveMessage!=nil && ctx.EffectiveMessage.ReplyToMessage!=nil && ctx.EffectiveMessage.ReplyToMessage.From!=nil {
+  target:=ctx.EffectiveMessage.ReplyToMessage.From
+  targetLine=fmt.Sprintf("<b>Replied member:</b> %s (<code>%d</code>)",gotgbot.EscapeHTML(compactDisplayName(target)),target.Id)
+ }
+ text:=fmt.Sprintf("<b>Telegram IDs</b>\\n<b>Chat ID:</b> <code>%d</code>\\n<b>Chat type:</b> %s\\n<b>Chat title:</b> %s\\n%s",chatID,gotgbot.EscapeHTML(chatType),gotgbot.EscapeHTML(chatTitle),targetLine)
+ _,err:=ctx.EffectiveMessage.Reply(b,text,&gotgbot.SendMessageOpts{ParseMode:"HTML"})
  return err
+}
+
+func compactDisplayName(user *gotgbot.User) string {
+ if user==nil { return "Unknown" }
+ name:=strings.Join(strings.Fields(strings.TrimSpace(user.FirstName+" "+user.LastName))," ")
+ if name=="" { return "Unknown" }
+ return name
 }
