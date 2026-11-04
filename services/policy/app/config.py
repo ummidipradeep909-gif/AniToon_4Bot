@@ -1,6 +1,12 @@
 import os
 from pathlib import Path
+from dotenv import dotenv_values
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Preserve the existing local .env workflow before resolving NAME_FILE overrides.
+for _key, _value in dotenv_values(".env").items():
+    if _value is not None:
+        os.environ.setdefault(_key, _value)
 
 
 def _load_secret_file(name: str, *, required: bool = False) -> None:

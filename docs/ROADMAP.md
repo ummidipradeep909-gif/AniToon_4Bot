@@ -57,6 +57,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Primary-bot webhook mode with HTTPS URL/secret validation, platform PORT support, clone polling compatibility and SIGINT/SIGTERM graceful updater shutdown
 - [x] Hardened single-host production Compose profile for private PostgreSQL/Redis, health-gated dependencies, persistent volumes, and container hardening
 - [x] Operator-driven PostgreSQL and Redis password rotation runbook with maintenance sequencing, dependency validation and rollback
-- [ ] Automated/zero-downtime credential rotation with dual credentials and secret-manager integration
+- [x] Docker Secrets overlay and file-based secret loading for bot, database, Redis, policy authentication, AI provider and stable clone encryption credentials; legacy environment variables remain supported
+- [ ] Automated/zero-downtime credential rotation with dual credentials and managed secret-manager integration
 - [ ] Load, abuse and recovery tests
 - [ ] Multi-instance deployment readiness and distributed clone polling leases

@@ -39,8 +39,14 @@ jobs:
       REDIS_TEST_URL: redis://localhost:6379/15
     steps:
       - uses: actions/checkout@v4
-      - name: Validate production Compose profile
-        run: docker compose --env-file .env.production.example -f compose.production.yaml config -q
+      - name: Prepare placeholder secret files for Compose validation
+        run: |
+          mkdir -p secrets
+          for name in postgres_password redis_password database_url policy_database_url redis_url policy_redis_url bot_token ai_service_token openai_api_key clone_encryption_key webhook_secret_token; do : > "secrets/$name"; done
+      - name: Validate production Compose profiles
+        run: |
+          docker compose --env-file .env.production.example -f compose.production.yaml -f compose.secrets.yaml config -q
+          docker compose --env-file .env.production.example -f compose.production.yaml config -q
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'

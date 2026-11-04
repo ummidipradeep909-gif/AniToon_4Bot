@@ -272,3 +272,8 @@ A hardened single-host Docker Compose profile is available in [`compose.producti
 ## Production credential rotation
 
 For the production Compose profile, PostgreSQL and Redis passwords can be rotated during a planned maintenance window using the [credential rotation runbook](docs/operations/CREDENTIAL_ROTATION.md). The procedure explicitly changes the existing PostgreSQL role password (not just the Compose initialization variable), updates both application connection URLs, verifies Redis authentication and documents rollback. It causes a brief service interruption; it is not zero-downtime rotation. Never change `CLONE_ENCRYPTION_KEY` as part of this procedure.
+
+
+## Docker Secrets and file-based credentials
+
+Legacy environment-variable deployments remain supported. Go and Python services also support `NAME_FILE` settings for read-only mounted secrets. See [Docker Secrets deployment](docs/operations/DOCKER_SECRETS.md) for the Compose overlay, required secret files, permissions, compatibility, and rollback. Required bot, database, Redis, and clone-encryption credentials are validated at startup; database/cache connection failures stop the bot. Never regenerate the existing `CLONE_ENCRYPTION_KEY`.

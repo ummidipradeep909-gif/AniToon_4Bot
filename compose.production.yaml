@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: anitoon4
       POSTGRES_USER: anitoon4
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the production environment}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +25,7 @@ services:
   redis:
     image: redis:7-alpine
     environment:
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in the production environment}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
     command:
       - sh
       - -ec
@@ -51,13 +51,13 @@ services:
     build:
       context: ./services/policy
     environment:
-      DATABASE_URL: ${POLICY_DATABASE_URL:?Set POLICY_DATABASE_URL to the production PostgreSQL URL}
-      REDIS_URL: ${POLICY_REDIS_URL:?Set POLICY_REDIS_URL to the production Redis URL}
+      DATABASE_URL: ${POLICY_DATABASE_URL:-}
+      REDIS_URL: ${POLICY_REDIS_URL:-}
       POLICY_SERVICE_HOST: 0.0.0.0
       POLICY_SERVICE_PORT: 8000
       AI_ENABLED: ${AI_ENABLED:-false}
       AI_PROVIDER: ${AI_PROVIDER:-openai}
-      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-12}
@@ -95,14 +95,14 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      BOT_TOKEN: ${BOT_TOKEN:?Set BOT_TOKEN}
+      BOT_TOKEN: ${BOT_TOKEN:-}
       BOT_MODE: ${BOT_MODE:-polling}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
-      REDIS_URL: ${REDIS_URL:?Set REDIS_URL}
+      DATABASE_URL: ${DATABASE_URL:-}
+      REDIS_URL: ${REDIS_URL:-}
       POLICY_SERVICE_URL: http://policy:8000
-      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?Set AI_SERVICE_TOKEN}
-      CLONE_ENCRYPTION_KEY: ${CLONE_ENCRYPTION_KEY:?Set stable CLONE_ENCRYPTION_KEY}
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:-}
+      CLONE_ENCRYPTION_KEY: ${CLONE_ENCRYPTION_KEY:-}
       CLONE_MAX_BOTS: ${CLONE_MAX_BOTS:-100}
       WEBHOOK_URL: ${WEBHOOK_URL:-}
       WEBHOOK_PATH: ${WEBHOOK_PATH:-/telegram/webhook}
