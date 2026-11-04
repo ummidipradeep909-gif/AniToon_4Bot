@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
+import secrets
 import asyncpg
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 from .ai import analyze_message
@@ -17,7 +18,7 @@ async def lifespan(app: FastAPI):
         await app.state.redis.aclose()
         await app.state.pg.close()
 
-app = FastAPI(title="AniToon_4Bot Policy Service", version="0.2.0", lifespan=lifespan)
+app = FastAPI(title="AniToon_4Bot Policy Service", version="0.3.0", lifespan=lifespan)
 
 class MessageSignal(BaseModel):
     chat_id: int
@@ -41,7 +42,7 @@ async def health():
     except Exception as exc:
         raise HTTPException(status_code=503, detail="dependency unavailable") from exc
     return {"status": "ok", "service": "policy", "database": "ok", "redis": "ok",
-            "ai_enabled": bool(settings.ai_enabled and settings.openai_api_key)}
+            "ai_enabled": bool(settings.ai_enabled and settings.openai_api_key and settings.ai_service_token)}
 
 @app.post("/v1/policy/evaluate")
 async def evaluate(signal: MessageSignal):
@@ -53,7 +54,12 @@ async def evaluate(signal: MessageSignal):
             "enforcement_enabled": False}
 
 @app.post("/v1/ai/analyze")
-async def ai_analyze(request: AIAnalysisRequest):
+async def ai_analyze(request: AIAnalysisRequest, x_ai_service_token: str = Header(default="")):
+    # Keep provider spend private to trusted bot services.
+    if not settings.ai_service_token or not secrets.compare_digest(
+        x_ai_service_token, settings.ai_service_token
+    ):
+        raise HTTPException(status_code=401, detail="unauthorized")
     if not settings.ai_enabled or not settings.openai_api_key:
         raise HTTPException(status_code=503, detail="AI assistance is not configured")
     try:
