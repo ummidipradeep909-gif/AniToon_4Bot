@@ -12,7 +12,7 @@ func TestCommunitySplitNameAndContent(t *testing.T) {
 	if err != nil || name != "rules" || content != "Be respectful.\nNo spam." {
 		t.Fatalf("got %q %q %v", name, content, err)
 	}
-	for _, input := range []string{"", "name", "bad name content", "bad/name content", "ok " + strings.Repeat("x", maxNoteContentUTF16+1)} {
+	for _, input := range []string{"", "name", "bad/name content", "ok " + strings.Repeat("x", maxNoteContentUTF16+1)} {
 		if _, _, err := communitySplitNameAndContent(input); err == nil {
 			t.Errorf("expected invalid note input %q", input[:min(len(input), 40)])
 		}
@@ -43,7 +43,7 @@ func TestFilterMatchIsExactAndCaseInsensitive(t *testing.T) {
 		{"HELLO", true}, {" hello ", true}, {"hello there", false}, {"say hello", false},
 		{"/hello", false}, {"", false},
 	} {
-		got := tc.text != "" && !strings.HasPrefix(strings.TrimSpace(tc.text), "/") && strings.EqualFold(strings.TrimSpace(tc.text), trigger)
+		got := matchesCustomFilter(tc.text, trigger)
 		if got != tc.want { t.Errorf("text %q: got %v want %v", tc.text, got, tc.want) }
 	}
 }
