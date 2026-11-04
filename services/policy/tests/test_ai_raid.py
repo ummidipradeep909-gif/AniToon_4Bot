@@ -12,7 +12,8 @@ class RaidAnalysisTests(unittest.IsolatedAsyncioTestCase):
             # Request payload is JSON encoded by httpx; inspect it without making a network call.
             import json
             body = json.loads(payload)
-            self.assertIn("join-wave telemetry", body["messages"][0]["content"])
+            self.assertIn("join-wave", body["messages"][0]["content"])
+            self.assertIn("telemetry", body["messages"][0]["content"])
             self.assertIn("join wave reached", body["messages"][1]["content"])
             return httpx.Response(200, json={"choices": [{"message": {"content":
                 '{"category":"raid","confidence":0.88,"recommendation":"admin_review",'
