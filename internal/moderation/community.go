@@ -167,37 +167,45 @@ func (s *communityService) clearNote(b *gotgbot.Bot, c *ext.Context) error {
 }
 
 func (s *communityService) filterCommand(b *gotgbot.Bot, c *ext.Context) error {
-	chatID,actor,err:=s.requireAdmin(b,c);if err!=nil{return reply(b,c,err.Error())}
-	raw:=communityCommandPayload(c.EffectiveMessage)
-	parts:=strings.SplitN(raw," ",3)
-	if len(parts)!=3{return reply(b,c,"Usage: /filter add <trigger> <response> or /filter remove <trigger>")}
-	action:=strings.ToLower(parts[0])
-	trigger,err:=validateFilterTrigger(parts[1]);if err!=nil{return reply(b,c,err.Error())}
-	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second);defer cancel()
-	if action=="remove" {
-		tag,e:=s.db.Exec(ctx,`DELETE FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 AND lower(trigger)=lower($3)`,b.User.Id,chatID,trigger)
-		if e!=nil{return reply(b,c,"I couldn't remove that filter.")}
-		if tag.RowsAffected()==0{return reply(b,c,"That filter was not found.")}
-		return reply(b,c,"Removed custom filter for '"+trigger+"'.")
+	chatID, actor, err := s.requireAdmin(b, c)
+	if err != nil { return reply(b, c, err.Error()) }
+	raw := communityCommandPayload(c.EffectiveMessage)
+	fields := strings.Fields(raw)
+	if len(fields) < 2 { return reply(b, c, "Usage: /filter add <trigger> <response> or /filter remove <trigger>") }
+	action := strings.ToLower(fields[0])
+	trigger, err := validateFilterTrigger(fields[1])
+	if err != nil { return reply(b, c, err.Error()) }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if action == "remove" {
+		if len(fields) != 2 { return reply(b, c, "Usage: /filter remove <trigger>") }
+		tag, e := s.db.Exec(ctx, `DELETE FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 AND lower(trigger)=lower($3)`, b.User.Id, chatID, trigger)
+		if e != nil { return reply(b, c, "I couldn't remove that filter.") }
+		if tag.RowsAffected() == 0 { return reply(b, c, "That filter was not found.") }
+		return reply(b, c, "Removed custom filter for '"+trigger+"'.")
 	}
-	if action!="add" {return reply(b,c,"Usage: /filter add <trigger> <response> or /filter remove <trigger>")}
-	response,err:=validateFilterResponse(parts[2]);if err!=nil{return reply(b,c,err.Error())}
-	if err=s.ensureChat(ctx,chatID);err==nil {
+	if action != "add" { return reply(b, c, "Usage: /filter add <trigger> <response> or /filter remove <trigger>") }
+	if len(fields) < 3 { return reply(b, c, "Usage: /filter add <trigger> <response>") }
+	// Keep spaces and line breaks in the response rather than joining tokens.
+	responseStart := strings.Index(raw, fields[1]) + len(fields[1])
+	response, err := validateFilterResponse(strings.TrimSpace(raw[responseStart:]))
+	if err != nil { return reply(b, c, err.Error()) }
+	if err = s.ensureChat(ctx, chatID); err == nil {
 		var count int
-		err=s.db.QueryRow(ctx,`SELECT COUNT(*) FROM chat_filters WHERE bot_id=$1 AND chat_id=$2`,b.User.Id,chatID).Scan(&count)
-		if err==nil {
+		err = s.db.QueryRow(ctx, `SELECT COUNT(*) FROM chat_filters WHERE bot_id=$1 AND chat_id=$2`, b.User.Id, chatID).Scan(&count)
+		if err == nil {
 			var exists bool
-			err=s.db.QueryRow(ctx,`SELECT EXISTS(SELECT 1 FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 AND lower(trigger)=lower($3))`,b.User.Id,chatID,trigger).Scan(&exists)
-			if err==nil&&!exists&&count>=maxCustomFilters{return reply(b,c,"This group has reached the 100-filter limit for this bot.")}
+			err = s.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM chat_filters WHERE bot_id=$1 AND chat_id=$2 AND lower(trigger)=lower($3))`, b.User.Id, chatID, trigger).Scan(&exists)
+			if err == nil && !exists && count >= maxCustomFilters { return reply(b, c, "This group has reached the 100-filter limit for this bot.") }
 		}
 	}
-	if err==nil {
-		_,err=s.db.Exec(ctx,`INSERT INTO chat_filters(bot_id,chat_id,trigger,response,created_by) VALUES($1,$2,$3,$4,$5)
-			ON CONFLICT(bot_id,chat_id,lower(trigger)) DO UPDATE SET response=EXCLUDED.response,created_by=EXCLUDED.created_by,created_at=NOW()`,
-			b.User.Id,chatID,trigger,response,actor)
+	if err == nil {
+		_, err = s.db.Exec(ctx, `INSERT INTO chat_filters(bot_id,chat_id,trigger,response,created_by) VALUES($1,$2,$3,$4,$5)
+			ON CONFLICT (bot_id,chat_id,(lower(trigger))) DO UPDATE SET response=EXCLUDED.response,created_by=EXCLUDED.created_by,created_at=NOW()`,
+			b.User.Id, chatID, trigger, response, actor)
 	}
-	if err!=nil{return reply(b,c,"I couldn't save that filter. Apply migration 014 and check PostgreSQL.")}
-	return reply(b,c,"Custom filter saved for '"+trigger+"'. It replies to exact, case-insensitive message or caption matches.")
+	if err != nil { return reply(b, c, "I couldn't save that filter. Apply migration 014 and check PostgreSQL.") }
+	return reply(b, c, "Custom filter saved for '"+trigger+"'. It replies to exact, case-insensitive message or caption matches.")
 }
 
 func (s *communityService) listFilters(b *gotgbot.Bot, c *ext.Context) error {
