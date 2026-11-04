@@ -56,6 +56,11 @@ func formatAdminList(admins []gotgbot.ChatMember) string {
 		role := "Administrator"
 		if member.GetStatus() == StatusCreator {
 			role = "Owner"
+		} else if member.GetStatus() == StatusAdmin {
+			merged := member.MergeChatMember()
+			if merged.CustomTitle != "" {
+				role += " (" + merged.CustomTitle + ")"
+			}
 		}
 		name := compactName(user)
 		if user.Username != "" {
@@ -81,9 +86,19 @@ func UserInfo(b *gotgbot.Bot, c *ext.Context) error {
 	if err != nil {
 		return reply(b, c, err.Error())
 	}
-	targetID, extra, err := resolveTarget(c.EffectiveMessage, commandArgs(c.EffectiveMessage))
-	if err != nil || strings.TrimSpace(extra) != "" {
-		return reply(b, c, "Usage: reply with /info or use /info <numeric_user_id>. "+targetError(err))
+	args := commandArgs(c.EffectiveMessage)
+	var targetID int64
+	if len(args) == 0 && c.EffectiveMessage.ReplyToMessage == nil {
+		if c.EffectiveUser == nil || c.EffectiveUser.Id == 0 {
+			return reply(b, c, "I couldn't identify your Telegram account.")
+		}
+		targetID = c.EffectiveUser.Id
+	} else {
+		var extra string
+		targetID, extra, err = resolveTarget(c.EffectiveMessage, args)
+		if err != nil || strings.TrimSpace(extra) != "" {
+			return reply(b, c, "Usage: /info (your info), reply with /info, or use /info <numeric_user_id>. "+targetError(err))
+		}
 	}
 	member, err := b.GetChatMember(chatID, targetID, nil)
 	if err != nil {
