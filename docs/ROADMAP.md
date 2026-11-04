@@ -48,7 +48,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] AI-assisted contextual keyword blacklist review with evasion candidates and Redis cooldown (admin suggestion only)
 - [x] Per-bot/per-group named notes and exact-match custom reply filters with admin-managed CRUD
 - [x] On-demand 24-hour/7-day moderation reports and opt-in per-bot/per-group ban, unban and kick alerts (scheduled delivery/log-channel routing remain future work)
-- [ ] User information and admin list
+- [x] User information, reply/numeric-ID lookup, expanded chat/user ID output and live group administrator list (Telegram does not expose private contact details or reliable join dates through these methods)
 
 ## Operations
 - [ ] Structured moderation metrics

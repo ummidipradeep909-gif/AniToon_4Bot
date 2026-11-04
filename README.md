@@ -4,7 +4,7 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 
 ## Implemented commands
 
-- /start, /help and /id.
+- `/start` and `/help`. `/id` shows chat ID/type/title and your user ID; reply to a member's message to show their ID. `/info` shows your own Telegram member details, or accepts a reply/numeric ID for another member. `/admins` fetches the current live group administrator list, including owner/admin roles and custom admin titles.
 - /clone and /cancel in the main bot's private chat: connect one user-owned Telegram bot created through @BotFather. `/clonestatus`, `/clonepause`, `/cloneresume` and `/cloneremove` let each owner inspect, pause, resume or permanently remove only their own clone.
 - /ban and /unban with administrator checks, bot permission checks, reply/numeric-ID targeting and protected administrator targets.
 - /kick using Telegram's ban-then-unban sequence, with an explicit warning if the unban step fails.

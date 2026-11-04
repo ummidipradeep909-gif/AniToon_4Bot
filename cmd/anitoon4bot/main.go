@@ -73,6 +73,7 @@ func main() {
  moderation.RegisterWarningCommands(dispatcher,db)
  moderation.RegisterAuditCommands(dispatcher,db)
  moderation.RegisterReportCommands(dispatcher)
+ moderation.RegisterUserInfoCommands(dispatcher)
  moderation.RegisterPurgeCommands(dispatcher)
  moderation.RegisterLockCommands(dispatcher,db)
  moderation.RegisterSlowModeCommands(dispatcher,db,redisClient)
