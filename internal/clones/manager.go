@@ -2,6 +2,7 @@ package clones
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -134,7 +135,9 @@ func (m *Manager) ReceiveToken(b *gotgbot.Bot, c *ext.Context) error {
 	token = ""
 	m.mu.Lock(); delete(m.pending, owner); m.mu.Unlock()
 	if err != nil {
-		_, e := b.SendMessage(c.EffectiveChat.Id, "I couldn't connect that bot. Check the token and make sure it isn't running on another host, then send /clone to try again. Your token message was deleted.", nil)
+		message := "I couldn't connect that bot. Check the token and make sure it isn't running on another host, then send /clone to try again. Your token message was deleted."
+		if errors.Is(err, errCloneQuotaReached) { message = "The shared clone quota is full right now. Your token message was deleted and no clone was started." }
+		_, e := b.SendMessage(c.EffectiveChat.Id, message, nil)
 		return e
 	}
 	_, e := b.SendMessage(c.EffectiveChat.Id, fmt.Sprintf("<b>Your AniToon clone is online!</b>\n\nBot: @%s\n\nOpen it and send /start. Add it to your group and promote it with the permissions needed for moderation.\n\nYour encrypted credentials are saved for automatic recovery after restarts.", user.Username), &gotgbot.SendMessageOpts{ParseMode: "HTML"})
