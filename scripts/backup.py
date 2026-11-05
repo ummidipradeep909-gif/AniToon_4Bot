@@ -236,8 +236,13 @@ def restore_drill(args: argparse.Namespace) -> None:
         _cleanup_pgpass(source_env)
         _cleanup_pgpass(target_env)
         raise RuntimeError("restore target is not sufficiently isolated")
-    manifest_path = Path(args.manifest).resolve()
+    manifest_path = Path(args.manifest)
+    if manifest_path.is_symlink():
+        raise RuntimeError("manifest must not be a symbolic link")
+    manifest_path = manifest_path.resolve()
     metadata = load_manifest(manifest_path)
+    if metadata["application_commit"] != _application_commit():
+        raise RuntimeError("backup application commit does not match the checked-out source revision")
     archive = manifest_path.parent / metadata["ciphertext_file"]
     identity = _required("BACKUP_AGE_IDENTITY_FILE")
     with tempfile.NamedTemporaryFile(prefix="anitoon-restore-", suffix=".dump", delete=False) as plain:
@@ -250,8 +255,21 @@ def restore_drill(args: argparse.Namespace) -> None:
         # Run the application's read-only migration verifier against restored DB.
         verify_env = os.environ.copy()
         verify_env["DATABASE_URL"] = target_url
-        _run(["go", "run", "./cmd/backup-verify"], verify_env)
-        print(json.dumps({"restore_drill": "passed", "target_database": target_db, "archive": archive.name}))
+        verification = subprocess.run(
+            ["go", "run", "./cmd/backup-verify"], env=verify_env,
+            check=True, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+        )
+        report = json.loads(verification.stdout)
+        if str(report.get("latest_migration_version")) != str(metadata["schema_migration_version"]):
+            raise RuntimeError("restored migration version does not match the backup manifest")
+        print(json.dumps({
+            "restore_drill": "passed",
+            "target_database": target_db,
+            "archive": archive.name,
+            "application_commit": metadata["application_commit"],
+            "schema_migration_version": metadata["schema_migration_version"],
+            "clone_credentials_verified": report.get("clone_credentials_verified", False),
+        }))
     finally:
         plaintext.unlink(missing_ok=True)
         _cleanup_pgpass(source_env)
