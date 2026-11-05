@@ -38,6 +38,8 @@ def _pg_config(url: str) -> tuple[dict[str, str], str]:
     if not db or not SAFE_NAME.fullmatch(db):
         raise RuntimeError("database name is invalid for backup tooling")
     env = os.environ.copy()
+    for sensitive in ("DATABASE_URL", "RESTORE_DATABASE_URL", "CLONE_ENCRYPTION_KEY", "BOT_TOKEN", "PGPASSWORD", "PGPASSFILE"):
+        env.pop(sensitive, None)
     env.update({
         "PGHOST": parsed.hostname,
         "PGPORT": str(parsed.port or 5432),
@@ -105,6 +107,8 @@ def create_backup(args: argparse.Namespace) -> None:
             _run(["age", "--recipient", recipient, "--output", str(encrypted_tmp), str(plaintext)], env)
         finally:
             plaintext.unlink(missing_ok=True)
+        with encrypted_tmp.open("rb") as encrypted_stream:
+            os.fsync(encrypted_stream.fileno())
         digest = _sha256(encrypted_tmp)
         metadata = {
             "manifest_version": MANIFEST_VERSION,
