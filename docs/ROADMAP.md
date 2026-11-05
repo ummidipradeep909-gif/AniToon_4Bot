@@ -66,9 +66,9 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [ ] Load, abuse and recovery tests
 - [x] Feature 19 (database baseline): bounded/configurable pgx pool sizing, deterministic warning-history index, config validation tests and deployment connection-budget guidance; workload-specific EXPLAIN/benchmark tuning remains pending production-like measurements.
 - [x] PostgreSQL-backed clone polling leases, fenced takeover, renewal and stop-on-lease-loss
-- [ ] Primary-bot polling supervisor and multi-instance deployment readiness
+- [ ] Primary-bot polling supervisor and full multi-instance deployment readiness; clone polling leases exist, but primary polling remains single-instance.
 
 
 - [x] Feature 16: owner-only private dashboard for process uptime, runtime memory/goroutines, PostgreSQL pool health, Redis connectivity, and aggregate clone health.
 
-- [ ] Feature 20: final production security audit in progress; PR hardens internal policy evaluation authentication. Complete remaining audit findings and verify CI before marking this milestone complete.
+- [ ] Feature 20: final production security audit remains in progress. PR #20 is merged and authenticates both internal policy endpoints; Go, Python and backup-tooling CI checks passed on the merge commit. Complete the broader audit and close remaining findings before marking this milestone complete.
