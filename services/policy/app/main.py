@@ -1,11 +1,11 @@
 from contextlib import asynccontextmanager
-import secrets
 import asyncpg
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 from .ai import analyze_message
 from .config import settings
+from .security import require_service_token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -45,7 +45,8 @@ async def health():
             "ai_enabled": bool(settings.ai_enabled and settings.openai_api_key and settings.ai_service_token)}
 
 @app.post("/v1/policy/evaluate")
-async def evaluate(signal: MessageSignal):
+async def evaluate(signal: MessageSignal, x_ai_service_token: str = Header(default="")):
+    require_service_token(x_ai_service_token, settings.ai_service_token)
     key = f"rate:{signal.chat_id}:{signal.user_id}"
     count = await app.state.redis.incr(key)
     if count == 1:
@@ -56,10 +57,7 @@ async def evaluate(signal: MessageSignal):
 @app.post("/v1/ai/analyze")
 async def ai_analyze(request: AIAnalysisRequest, x_ai_service_token: str = Header(default="")):
     # Keep provider spend private to trusted bot services.
-    if not settings.ai_service_token or not secrets.compare_digest(
-        x_ai_service_token, settings.ai_service_token
-    ):
-        raise HTTPException(status_code=401, detail="unauthorized")
+    require_service_token(x_ai_service_token, settings.ai_service_token)
     if not settings.ai_enabled or not settings.openai_api_key:
         raise HTTPException(status_code=503, detail="AI assistance is not configured")
     try:

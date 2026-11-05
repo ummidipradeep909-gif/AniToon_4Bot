@@ -2,7 +2,6 @@ import asyncio
 import unittest
 
 import httpx
-
 from app.ai import analyze_message
 
 
@@ -67,3 +66,4 @@ class AIResilienceTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

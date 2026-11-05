@@ -70,3 +70,5 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 
 
 - [x] Feature 16: owner-only private dashboard for process uptime, runtime memory/goroutines, PostgreSQL pool health, Redis connectivity, and aggregate clone health.
+
+- [ ] Feature 20: final production security audit in progress; PR hardens internal policy evaluation authentication. Complete remaining audit findings and verify CI before marking this milestone complete.

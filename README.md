@@ -295,3 +295,11 @@ Enabled clones are reconciled automatically, with safe health states and capped 
 ## Owner dashboard
 
 Set `BOT_OWNER_ID` to the numeric Telegram user ID of the system owner to enable the private `/dashboard` command. It reports process uptime, Go memory/goroutine metrics, PostgreSQL pool health, Redis connectivity, and aggregate clone health. Non-owner and group requests receive no dashboard data.
+
+## Internal policy-service authentication
+
+Both `POST /v1/policy/evaluate` and `POST /v1/ai/analyze` require the
+shared `X-AI-Service-Token` header. The service compares tokens in constant
+time and fails closed when no token is configured. Keep the token private to
+the bot and policy service; do not expose the policy service port publicly.
+AI output remains advisory only and cannot trigger moderation enforcement.
