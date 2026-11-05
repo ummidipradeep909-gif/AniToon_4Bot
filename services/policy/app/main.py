@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-import secrets
 import asyncpg
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
@@ -58,7 +57,7 @@ async def evaluate(signal: MessageSignal, x_ai_service_token: str = Header(defau
 @app.post("/v1/ai/analyze")
 async def ai_analyze(request: AIAnalysisRequest, x_ai_service_token: str = Header(default="")):
     # Keep provider spend private to trusted bot services.
-    _require_service_token(x_ai_service_token)
+    require_service_token(x_ai_service_token, settings.ai_service_token)
     if not settings.ai_enabled or not settings.openai_api_key:
         raise HTTPException(status_code=503, detail="AI assistance is not configured")
     try:
