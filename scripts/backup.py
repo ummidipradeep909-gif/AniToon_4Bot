@@ -85,8 +85,37 @@ def _cleanup_pgpass(env: dict[str, str]) -> None:
             pass
 
 
+def _application_commit() -> str:
+    configured = os.environ.get("APP_COMMIT", "").strip()
+    if configured:
+        commit = configured
+    else:
+        commit = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise RuntimeError("application commit must be a full 40-character Git SHA")
+    return commit
+
+
+def _migration_version() -> str:
+    configured = os.environ.get("EXPECTED_MIGRATION_VERSION", "").strip()
+    if configured:
+        if not configured.isdigit() or int(configured) <= 0:
+            raise RuntimeError("expected migration version must be a positive integer")
+        return str(int(configured))
+    versions = []
+    for path in Path("migrations").glob("[0-9]*_*.sql"):
+        prefix = path.name.split("_", 1)[0]
+        if prefix.isdigit():
+            versions.append(int(prefix))
+    if not versions:
+        raise RuntimeError("could not determine application migration version")
+    return str(max(versions))
+
+
 def create_backup(args: argparse.Namespace) -> None:
     url = _required("DATABASE_URL")
+    app_commit = _application_commit()
+    migration_version = _migration_version()
     recipient = _required("BACKUP_AGE_RECIPIENT")
     root = Path(args.output).resolve()
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -118,8 +147,8 @@ def create_backup(args: argparse.Namespace) -> None:
             "encryption": "age",
             "ciphertext_file": encrypted.name,
             "ciphertext_sha256": digest,
-            "application_commit": os.environ.get("APP_COMMIT", "unknown"),
-            "schema_migration_version": os.environ.get("EXPECTED_MIGRATION_VERSION", "unknown"),
+            "application_commit": app_commit,
+            "schema_migration_version": migration_version,
         }
         with manifest_tmp.open("x", encoding="utf-8") as stream:
             os.chmod(manifest_tmp, 0o600)
