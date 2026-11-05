@@ -32,10 +32,10 @@ func TestEmbeddedMigrationsApplyTwiceOnFreshSchema(t *testing.T) {
 	if err = Apply(ctx, pool); err != nil { t.Fatalf("reapply embedded migrations: %v", err) }
 	var applied int
 	if err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&applied); err != nil { t.Fatal(err) }
-	if applied != 16 { t.Fatalf("got %d embedded migrations, want 16", applied) }
+	if applied != 17 { t.Fatalf("got %d embedded migrations, want 17", applied) }
 	version, verified, err := VerifyLedger(ctx, pool)
 	if err != nil { t.Fatalf("verify restored migration ledger: %v", err) }
-	if version != 16 || verified != applied { t.Fatalf("verified version/count = %d/%d, want 16/%d", version, verified, applied) }
+	if version != 17 || verified != applied { t.Fatalf("verified version/count = %d/%d, want 17/%d", version, verified, applied) }
 	if _, err = pool.Exec(ctx, "UPDATE schema_migrations SET checksum = $1 WHERE version = 1", "tampered"); err != nil { t.Fatal(err) }
 	if _, _, err = VerifyLedger(ctx, pool); err == nil { t.Fatal("expected checksum mismatch to fail verification") }
 	var enabledColumn bool
