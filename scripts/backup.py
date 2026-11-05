@@ -46,6 +46,8 @@ def _pg_config(url: str) -> tuple[dict[str, str], str]:
         "PGSSLMODE": urllib.parse.parse_qs(parsed.query).get("sslmode", ["prefer"])[0],
     })
     password = urllib.parse.unquote(parsed.password or "")
+    if "\\n" in password or "\\r" in password:
+        raise RuntimeError("database password contains unsupported line breaks")
     if password:
         # A private temporary password file avoids credentials in argv and logs.
         passfile = tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", delete=False)
@@ -184,6 +186,10 @@ def restore_drill(args: argparse.Namespace) -> None:
         _cleanup_pgpass(source_env)
         _cleanup_pgpass(target_env)
         raise RuntimeError("restore target resolves to the source production database")
+    if not target_db.endswith(("_restore", "_drill")):
+        _cleanup_pgpass(source_env)
+        _cleanup_pgpass(target_env)
+        raise RuntimeError("restore target database name must end in _restore or _drill")
     if source_db == target_db and source_env["PGHOST"] == target_env["PGHOST"]:
         _cleanup_pgpass(source_env)
         _cleanup_pgpass(target_env)
