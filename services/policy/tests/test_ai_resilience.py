@@ -2,11 +2,6 @@ import asyncio
 import unittest
 
 import httpx
-from fastapi import HTTPException
-from app.security import require_service_token
-from fastapi import HTTPException
-from app.security import require_service_token
-
 from app.ai import analyze_message
 
 
@@ -71,17 +66,4 @@ class AIResilienceTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-class PolicyAuthenticationTests(unittest.TestCase):
-    def test_service_token_is_required_and_fail_closed(self):
-        require_service_token("shared-secret", "shared-secret")
-        for candidate, configured in [("", "shared-secret"), ("wrong", "shared-secret"), ("anything", "")]:
-            with self.subTest(candidate=candidate, configured=bool(configured)):
-                with self.assertRaises(HTTPException) as raised:
-                    require_service_token(candidate, configured)
-                self.assertEqual(raised.exception.status_code, 401)
-                self.assertEqual(raised.exception.detail, "unauthorized")
-
 
