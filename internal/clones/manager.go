@@ -365,7 +365,7 @@ func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
 	m.mu.Lock()
 	clone:=m.bots[botID]
 	if m.active[botID] {
-		if clone==nil || !m.updater.StopBot(clone.Token) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone, so its credentials were retained.",nil); return err }
+		if clone==nil || !m.stopPolling(clone) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone, so its credentials were retained.",nil); return err }
 	}
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
 	err=m.store.delete(ctx,botID); cancel()
