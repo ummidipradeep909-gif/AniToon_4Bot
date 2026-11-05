@@ -184,7 +184,11 @@ def restore_drill(args: argparse.Namespace) -> None:
     source_url = _required("DATABASE_URL")
     target_url = _required("RESTORE_DATABASE_URL")
     source_env, source_db = _pg_config(source_url)
-    target_env, target_db = _pg_config(target_url)
+    try:
+        target_env, target_db = _pg_config(target_url)
+    except Exception:
+        _cleanup_pgpass(source_env)
+        raise
     # Reject same endpoint/database and same database name conservatively.
     if (source_env["PGHOST"], source_env["PGPORT"], source_db) == (target_env["PGHOST"], target_env["PGPORT"], target_db):
         _cleanup_pgpass(source_env)
