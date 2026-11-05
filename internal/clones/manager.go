@@ -196,7 +196,7 @@ func (m *Manager) startPolling(clone *gotgbot.Bot) error {
 	return nil
 }
 func (m *Manager) stopPolling(clone *gotgbot.Bot) bool {
-	if clone==nil || !m.stopPolling(clone) { return false }
+	if clone==nil || !m.updater.StopBot(clone.Token) { return false }
 	if m.leaseCoordinator!=nil { ctx,cancel:=context.WithTimeout(context.Background(),3*time.Second); err:=m.leaseCoordinator.Release(ctx,clone.User.Id); cancel(); if err!=nil { m.logger.Error("clone polling lease release failed; lease will expire","bot_id",clone.User.Id) } }
 	return true
 }
@@ -316,7 +316,7 @@ func (m *Manager) Pause(b *gotgbot.Bot, c *ext.Context) error {
 	m.mu.Lock()
 	if !m.active[botID] { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"Your clone is already paused.",nil); return err }
 	clone:=m.bots[botID]
-	if clone==nil || !m.updater.StopBot(clone.Token) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone. No status change was saved.",nil); return err }
+	if clone==nil || !m.stopPolling(clone) { m.mu.Unlock(); _,err=b.SendMessage(c.EffectiveChat.Id,"I couldn't safely stop your clone. No status change was saved.",nil); return err }
 	ctx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
 	err=m.store.setEnabled(ctx,botID,owner,false); cancel()
 	if err!=nil {
