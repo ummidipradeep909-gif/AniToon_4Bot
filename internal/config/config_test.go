@@ -13,6 +13,7 @@ func requiredEnv(t *testing.T) {
  t.Setenv("REDIS_URL","redis://localhost:6379/0")
  t.Setenv("CLONE_ENCRYPTION_KEY",base64.StdEncoding.EncodeToString(make([]byte,32)))
  t.Setenv("AI_SERVICE_TOKEN","")
+ t.Setenv("BOT_OWNER_ID","")
  t.Setenv("BOT_MODE","")
  t.Setenv("LOG_LEVEL","")
  t.Setenv("WEBHOOK_URL","")
@@ -68,3 +69,5 @@ func TestLoadDoesNotExposeSecretContents(t *testing.T) {
  _,err:=Load()
  if err==nil || err.Error()=="123456:testing-token" { t.Fatalf("unexpected error: %v",err) }
 }
+
+func TestLoadOwnerID(t *testing.T) { requiredEnv(t); t.Setenv("BOT_OWNER_ID","123456"); got,err:=Load(); if err!=nil || got.OwnerID!=123456 { t.Fatalf("owner ID: %#v %v",got,err) }; requiredEnv(t); t.Setenv("BOT_OWNER_ID","0"); if _,err:=Load(); err==nil { t.Fatal("zero owner ID accepted") } }

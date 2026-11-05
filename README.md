@@ -282,3 +282,8 @@ Legacy environment-variable deployments remain supported. Go and Python services
 ## Clone health monitoring
 
 Enabled clones are reconciled automatically, with safe health states and capped retry backoff. See [clone health monitoring](docs/operations/CLONE_HEALTH_MONITORING.md). Multi-instance lease coordination remains a separate deployment requirement.
+
+
+## Owner dashboard
+
+Set `BOT_OWNER_ID` to the numeric Telegram user ID of the system owner to enable the private `/dashboard` command. It reports process uptime, Go memory/goroutine metrics, PostgreSQL pool health, Redis connectivity, and aggregate clone health. Non-owner and group requests receive no dashboard data.

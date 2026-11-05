@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/secrets"
@@ -17,6 +18,7 @@ type Config struct {
 	BotToken, DatabaseURL, RedisURL, CloneEncryptionKey, AIServiceToken string
 	Mode, LogLevel, WebhookURL, WebhookPath, WebhookListenAddr, WebhookSecretToken string
 	PolicyServiceURL string
+	OwnerID int64
 }
 
 func Load() (Config, error) {
@@ -32,6 +34,13 @@ func Load() (Config, error) {
 	}
 	key,e:=base64.StdEncoding.DecodeString(c.CloneEncryptionKey)
 	if e!=nil || len(key)!=32 { return Config{},fmt.Errorf("CLONE_ENCRYPTION_KEY must be the existing base64-encoded 32-byte AES key") }
+	ownerValue := strings.TrimSpace(os.Getenv("BOT_OWNER_ID"))
+	if ownerValue != "" {
+		c.OwnerID, err = strconv.ParseInt(ownerValue, 10, 64)
+		if err != nil || c.OwnerID <= 0 {
+			return Config{}, fmt.Errorf("BOT_OWNER_ID must be a positive Telegram user ID")
+		}
+	}
 	if c.Mode=strings.ToLower(strings.TrimSpace(os.Getenv("BOT_MODE"))); c.Mode=="" { c.Mode="polling" }
 	if c.Mode!="polling" && c.Mode!="webhook" { return Config{},fmt.Errorf("unsupported BOT_MODE; supported modes: polling, webhook") }
 	if c.LogLevel=strings.ToLower(strings.TrimSpace(os.Getenv("LOG_LEVEL"))); c.LogLevel=="" { c.LogLevel="info" }

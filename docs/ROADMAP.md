@@ -61,3 +61,6 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [ ] Automated/zero-downtime credential rotation with dual credentials and managed secret-manager integration
 - [ ] Load, abuse and recovery tests
 - [ ] Multi-instance deployment readiness and distributed clone polling leases
+
+
+- [x] Feature 16: owner-only private dashboard for process uptime, runtime memory/goroutines, PostgreSQL pool health, Redis connectivity, and aggregate clone health.
