@@ -108,6 +108,7 @@ func TestLoadRejectsInvalidPostgresPoolSettings(t *testing.T) {
  for _, tc := range cases {
   t.Run(tc.name+"_"+tc.value, func(t *testing.T) {
    requiredEnv(t)
+   if tc.name == "DB_POOL_MIN_CONNS" { t.Setenv("DB_POOL_MAX_CONNS", "2") }
    t.Setenv(tc.name, tc.value)
    if _, err := Load(); err == nil { t.Fatalf("invalid %s=%q accepted", tc.name, tc.value) }
   })
