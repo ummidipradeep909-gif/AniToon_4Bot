@@ -60,7 +60,8 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Docker Secrets overlay and file-based secret loading for bot, database, Redis, policy authentication, AI provider and stable clone encryption credentials; legacy environment variables remain supported
 - [ ] Automated/zero-downtime credential rotation with dual credentials and managed secret-manager integration
 - [ ] Load, abuse and recovery tests
-- [ ] Multi-instance deployment readiness and distributed clone polling leases
+- [x] PostgreSQL-backed clone polling leases, fenced takeover, renewal and stop-on-lease-loss
+- [ ] Primary-bot polling supervisor and multi-instance deployment readiness
 
 
 - [x] Feature 16: owner-only private dashboard for process uptime, runtime memory/goroutines, PostgreSQL pool health, Redis connectivity, and aggregate clone health.

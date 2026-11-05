@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/bot"
 	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/moderation"
+ "github.com/ummidipradeep909-gif/AniToon_4Bot/internal/leases"
 )
 
 type Manager struct {
@@ -28,6 +29,7 @@ type Manager struct {
 	active map[int64]bool
 	bots map[int64]*gotgbot.Bot
 	health map[int64]cloneHealth
+	leaseCoordinator *leases.Coordinator
 	maxClones int
 	logger *slog.Logger
 	store credentialStore
@@ -36,9 +38,11 @@ type Manager struct {
 
 func NewManager(updater *ext.Updater, primaryID int64, logger *slog.Logger, db *pgxpool.Pool, encodedKey string) *Manager {
 	if logger == nil { logger = slog.Default() }
+	coordinator, _ := leases.NewCoordinator(db)
 	key, keyErr := parseEncryptionKey(encodedKey)
 	if keyErr != nil { key = nil }
 	return &Manager{
+		leaseCoordinator: coordinator,
 		updater: updater, primaryID: primaryID, pending: map[int64]time.Time{},
 		owners: map[int64]int64{}, active: map[int64]bool{}, bots: map[int64]*gotgbot.Bot{}, health: map[int64]cloneHealth{}, maxClones: cloneQuotaFromEnv(), logger: logger,
 		store: credentialStore{db: db}, key: key,
@@ -182,10 +186,27 @@ func (m *Manager) connectNew(token string, owner int64) (*gotgbot.User, error) {
 }
 
 func (m *Manager) startPolling(clone *gotgbot.Bot) error {
-	return m.updater.StartPolling(clone, &ext.PollingOpts{GetUpdatesOpts: &gotgbot.GetUpdatesOpts{
-		Timeout: 30, AllowedUpdates: []string{"message", "chat_member"},
-		RequestOpts: &gotgbot.RequestOpts{Timeout: 35*time.Second},
-	}})
+	if m.leaseCoordinator == nil { return fmt.Errorf("distributed polling lease coordinator is unavailable") }
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	_, err := m.leaseCoordinator.Acquire(ctx, clone.User.Id); cancel()
+	if err != nil { return fmt.Errorf("acquire clone polling lease: %w", err) }
+	if err := m.updater.StartPolling(clone, &ext.PollingOpts{GetUpdatesOpts: &gotgbot.GetUpdatesOpts{Timeout:30, AllowedUpdates:[]string{"message","chat_member"}, RequestOpts:&gotgbot.RequestOpts{Timeout:35*time.Second}}}); err != nil {
+		releaseCtx, releaseCancel := context.WithTimeout(context.Background(),3*time.Second); _=m.leaseCoordinator.Release(releaseCtx,clone.User.Id); releaseCancel(); return err
+	}
+	return nil
+}
+func (m *Manager) stopPolling(clone *gotgbot.Bot) bool {
+	if clone==nil || !m.stopPolling(clone) { return false }
+	if m.leaseCoordinator!=nil { ctx,cancel:=context.WithTimeout(context.Background(),3*time.Second); err:=m.leaseCoordinator.Release(ctx,clone.User.Id); cancel(); if err!=nil { m.logger.Error("clone polling lease release failed; lease will expire","bot_id",clone.User.Id) } }
+	return true
+}
+func (m *Manager) RunLeaseMonitor(ctx context.Context) {
+	if m.leaseCoordinator==nil { m.logger.Error("clone polling lease monitor unavailable"); return }
+	go m.leaseCoordinator.Run(ctx,func(botID int64){
+		m.mu.Lock(); clone:=m.bots[botID]; if clone!=nil { _=m.updater.StopBot(clone.Token) }; m.active[botID]=false
+		h:=m.health[botID]; h.Status="degraded"; h.LastChecked=time.Now(); h.ConsecutiveFailures++; m.health[botID]=h; m.mu.Unlock()
+		m.logger.Error("clone polling stopped after distributed lease loss","bot_id",botID)
+	})
 }
 
 // Recover loads and independently validates every persisted clone. One bad record never blocks the primary bot.
@@ -329,7 +350,7 @@ func (m *Manager) Resume(b *gotgbot.Bot, c *ext.Context) error {
 	if err=m.startPolling(clone); err!=nil { m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't resume polling. Your clone remains paused.",nil); return sendErr }
 	ctx,cancel=context.WithTimeout(context.Background(),5*time.Second)
 	err=m.store.setEnabled(ctx,botID,owner,true); cancel()
-	if err!=nil { _=m.updater.StopBot(clone.Token); m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't save the resumed state. Your clone was stopped again.",nil); return sendErr }
+	if err!=nil { _=m.stopPolling(clone); m.mu.Unlock(); _,sendErr:=b.SendMessage(c.EffectiveChat.Id,"I couldn't save the resumed state. Your clone was stopped again.",nil); return sendErr }
 	m.active[botID]=true; m.bots[botID]=clone
 	now:=time.Now(); m.health[botID]=cloneHealth{Status:"healthy",LastChecked:now,LastHealthy:now}
 	m.mu.Unlock()

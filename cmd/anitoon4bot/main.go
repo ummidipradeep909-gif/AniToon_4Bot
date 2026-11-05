@@ -105,6 +105,7 @@ func main() {
  healthCtx,healthCancel:=context.WithCancel(context.Background())
  defer healthCancel()
  go cloneManager.RunHealthMonitor(healthCtx,60*time.Second)
+ cloneManager.RunLeaseMonitor(healthCtx)
  recoveryCtx,recoveryCancel:=context.WithTimeout(context.Background(),30*time.Second)
  cloneManager.Recover(recoveryCtx)
  recoveryCancel()
