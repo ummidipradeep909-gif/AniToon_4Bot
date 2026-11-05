@@ -107,7 +107,7 @@ def create_backup(args: argparse.Namespace) -> None:
             _run(["age", "--recipient", recipient, "--output", str(encrypted_tmp), str(plaintext)], env)
         finally:
             plaintext.unlink(missing_ok=True)
-        with encrypted_tmp.open("rb") as encrypted_stream:
+        with encrypted_tmp.open("rb+") as encrypted_stream:
             os.fsync(encrypted_stream.fileno())
         digest = _sha256(encrypted_tmp)
         metadata = {
