@@ -279,6 +279,10 @@ For the production Compose profile, PostgreSQL and Redis passwords can be rotate
 Legacy environment-variable deployments remain supported. Go and Python services also support `NAME_FILE` settings for read-only mounted secrets. See [Docker Secrets deployment](docs/operations/DOCKER_SECRETS.md) for the Compose overlay, required secret files, permissions, compatibility, and rollback. Required bot, database, Redis, and clone-encryption credentials are validated at startup; database/cache connection failures stop the bot. Never regenerate the existing `CLONE_ENCRYPTION_KEY`.
 
 
+## Encrypted backups and disaster recovery
+
+The `scripts/backup.py` tool creates PostgreSQL custom-format dumps encrypted with an age public key, writes a SHA-256 manifest, verifies/decrypts archives for `pg_restore --list`, and supports a guarded isolated restore drill. The Go `cmd/backup-verify` command validates the exact embedded migration ledger and authenticates every saved clone credential using the existing `CLONE_ENCRYPTION_KEY` without displaying plaintext tokens. See [the backup and restore runbook](docs/operations/DATABASE_BACKUP_RESTORE.md). Scheduled orchestration, off-host retention and alerting remain operator responsibilities.
+
 ## Clone health monitoring
 
 Enabled clones are reconciled automatically, with safe health states and capped retry backoff. See [clone health monitoring](docs/operations/CLONE_HEALTH_MONITORING.md). Clone polling uses PostgreSQL-backed per-bot leases with renewal and fail-safe stop on lease loss. See docs/operations/MULTI_INSTANCE.md. Primary polling remains single-instance until its supervisor is enabled.
