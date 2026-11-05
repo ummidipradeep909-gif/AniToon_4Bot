@@ -40,13 +40,26 @@ def _pg_config(url: str) -> tuple[dict[str, str], str]:
     env = os.environ.copy()
     for sensitive in ("DATABASE_URL", "RESTORE_DATABASE_URL", "CLONE_ENCRYPTION_KEY", "BOT_TOKEN", "PGPASSWORD", "PGPASSFILE"):
         env.pop(sensitive, None)
+    query = urllib.parse.parse_qs(parsed.query)
     env.update({
         "PGHOST": parsed.hostname,
         "PGPORT": str(parsed.port or 5432),
         "PGUSER": urllib.parse.unquote(parsed.username or ""),
         "PGDATABASE": db,
-        "PGSSLMODE": urllib.parse.parse_qs(parsed.query).get("sslmode", ["prefer"])[0],
     })
+    libpq_options = {
+        "sslmode": "PGSSLMODE",
+        "sslrootcert": "PGSSLROOTCERT",
+        "sslcert": "PGSSLCERT",
+        "sslkey": "PGSSLKEY",
+        "connect_timeout": "PGCONNECT_TIMEOUT",
+        "application_name": "PGAPPNAME",
+        "target_session_attrs": "PGTARGETSESSIONATTRS",
+        "options": "PGOPTIONS",
+    }
+    for parameter, variable in libpq_options.items():
+        if parameter in query:
+            env[variable] = query[parameter][0]
     password = urllib.parse.unquote(parsed.password or "")
     if "\n" in password or "\r" in password:
         raise RuntimeError("database password contains unsupported line breaks")
@@ -172,9 +185,25 @@ def load_manifest(path: Path) -> dict:
     if not path.is_file():
         raise RuntimeError("manifest must be a regular file")
     data = json.loads(path.read_text(encoding="utf-8"))
-    required = {"manifest_version", "database", "created_at", "format", "encryption", "ciphertext_file", "ciphertext_sha256"}
+    required = {
+        "manifest_version", "database", "created_at", "format", "encryption",
+        "ciphertext_file", "ciphertext_sha256", "application_commit",
+        "schema_migration_version",
+    }
     if not required.issubset(data) or data["manifest_version"] != MANIFEST_VERSION:
         raise RuntimeError("backup manifest is incomplete or unsupported")
+    if not SAFE_NAME.fullmatch(str(data["database"])):
+        raise RuntimeError("backup manifest database name is invalid")
+    if data["format"] != "postgresql-custom-dump" or data["encryption"] != "age":
+        raise RuntimeError("backup manifest format or encryption is unsupported")
+    if not re.fullmatch(r"[0-9a-f]{40}", str(data["application_commit"])):
+        raise RuntimeError("backup manifest application commit is invalid")
+    if not str(data["schema_migration_version"]).isdigit() or int(data["schema_migration_version"]) <= 0:
+        raise RuntimeError("backup manifest migration version is invalid")
+    try:
+        dt.datetime.fromisoformat(str(data["created_at"]))
+    except ValueError:
+        raise RuntimeError("backup manifest timestamp is invalid") from None
     name = data["ciphertext_file"]
     if not isinstance(name, str) or Path(name).name != name or not name.endswith(".dump.age"):
         raise RuntimeError("backup manifest contains an invalid archive path")
@@ -242,11 +271,25 @@ def restore_drill(args: argparse.Namespace) -> None:
         os.chmod(plaintext, 0o600)
         try:
             _run(["age", "--decrypt", "--identity", identity, "--output", str(plaintext), str(archive)], os.environ.copy())
-            # Destructive operation is limited to the separately confirmed target URL.
+            # Require a fresh database so the restore cannot drop or overwrite
+            # application objects that are not part of this archive.
+            empty_check = subprocess.run(
+                [
+                    "psql", "--no-password", "--tuples-only", "--no-align",
+                    "--dbname", target_db, "--command",
+                    "SELECT COUNT(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace "
+                    "WHERE n.nspname NOT IN ('pg_catalog','information_schema') "
+                    "AND n.nspname NOT LIKE 'pg_toast%' AND c.relkind IN ('r','p','v','m','S','f')",
+                ],
+                env=target_env, check=True, stdin=subprocess.DEVNULL,
+                capture_output=True, text=True,
+            )
+            if empty_check.stdout.strip() != "0":
+                raise RuntimeError("restore target database is not empty")
             _run([
-                "pg_restore", "--no-password", "--clean", "--if-exists",
-                "--no-owner", "--no-privileges", "--exit-on-error",
-                "--single-transaction", "--dbname", target_db, str(plaintext),
+                "pg_restore", "--no-password", "--no-owner", "--no-privileges",
+                "--exit-on-error", "--single-transaction", "--dbname", target_db,
+                str(plaintext),
             ], target_env)
             verify_env = os.environ.copy()
             for sensitive in ("DATABASE_URL", "RESTORE_DATABASE_URL", "DATABASE_URL_FILE", "PGPASSWORD", "PGPASSFILE"):
