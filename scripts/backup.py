@@ -137,7 +137,9 @@ def create_backup(args: argparse.Namespace) -> None:
 
 
 def load_manifest(path: Path) -> dict:
-    if path.is_symlink() or not path.is_file():
+    if path.is_symlink():
+        raise RuntimeError("manifest must not be a symbolic link")
+    if not path.is_file():
         raise RuntimeError("manifest must be a regular file")
     data = json.loads(path.read_text(encoding="utf-8"))
     required = {"manifest_version", "database", "created_at", "format", "encryption", "ciphertext_file", "ciphertext_sha256"}
