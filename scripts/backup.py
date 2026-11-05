@@ -249,11 +249,21 @@ def restore_drill(args: argparse.Namespace) -> None:
                 "--single-transaction", "--dbname", target_db, str(plaintext),
             ], target_env)
             verify_env = os.environ.copy()
-            verify_env["DATABASE_URL"] = _required("RESTORE_DATABASE_URL")
-            verification = subprocess.run(
-                ["go", "run", "./cmd/backup-verify"], env=verify_env,
-                check=True, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-            )
+            for sensitive in ("DATABASE_URL", "RESTORE_DATABASE_URL", "DATABASE_URL_FILE", "PGPASSWORD", "PGPASSFILE"):
+                verify_env.pop(sensitive, None)
+            with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", prefix="anitoon-restore-dsn-", delete=False) as dsn_file:
+                dsn_path = Path(dsn_file.name)
+                os.chmod(dsn_path, 0o600)
+                dsn_file.write(_required("RESTORE_DATABASE_URL"))
+                dsn_file.flush()
+            try:
+                verify_env["DATABASE_URL_FILE"] = str(dsn_path)
+                verification = subprocess.run(
+                    ["go", "run", "./cmd/backup-verify"], env=verify_env,
+                    check=True, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                )
+            finally:
+                dsn_path.unlink(missing_ok=True)
             report = json.loads(verification.stdout)
             if str(report.get("latest_migration_version")) != str(metadata["schema_migration_version"]):
                 raise RuntimeError("restored migration version does not match the backup manifest")
