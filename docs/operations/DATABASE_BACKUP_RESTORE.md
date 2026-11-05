@@ -2,6 +2,72 @@
 
 This guide covers the durable PostgreSQL data used by AniToon_4Bot and the encryption key required to recover clone-bot credentials. Practice a restore before relying on backups in production.
 
+## Encrypted backup tool (Feature 18)
+
+The repository includes `scripts/backup.py`. It uses PostgreSQL custom-format dumps and [age](https://age-encryption.org/) public-key encryption. The age recipient is public and can be stored in deployment configuration; the matching age identity is private and must be kept separately from the backup destination. The script does not put database passwords in process arguments: libpq receives credentials through a mode-0600 temporary password file, removed after the operation.
+
+Install PostgreSQL client tools (`pg_dump`, `pg_restore`), age, Python 3.12+, Go 1.24+, and the application source revision matching the backup.
+
+### Create an encrypted backup
+
+Configure these values in the protected shell environment or a secret-file loader:
+
+- `DATABASE_URL`: source PostgreSQL connection URL.
+- `BACKUP_AGE_RECIPIENT`: age public recipient string (not a secret).
+- `APP_COMMIT`: exact application commit being backed up.
+- `EXPECTED_MIGRATION_VERSION`: current migration version for the manifest.
+
+Then run:
+
+```bash
+umask 077
+python scripts/backup.py create --output /secure/off-host-staging/anitoon
+```
+
+The script writes a `.dump.age` archive and a JSON manifest. It creates plaintext dumps only in a mode-0600 temporary file and deletes that file on success or failure. The encrypted archive and manifest are atomically renamed into place. Copy both files to an access-controlled off-host destination and apply retention there. The SHA-256 value detects accidental archive corruption; it is not a digital signature or a substitute for access control. Age authenticated encryption protects the dump contents.
+
+### Verify an encrypted backup
+
+Configure `BACKUP_AGE_IDENTITY_FILE` to the path of the private age identity file, then run:
+
+```bash
+python scripts/backup.py verify /secure/off-host-staging/anitoon/<backup>.manifest.json
+```
+
+Verification checks the manifest schema, rejects path traversal and non-regular archive files, validates the ciphertext SHA-256 digest, decrypts to a private temporary file, and runs `pg_restore --list`. It does not connect to or modify a database.
+
+### Run an isolated restore drill
+
+The restore drill is intentionally destructive to its target database: `pg_restore --clean --if-exists` replaces objects in that database. It refuses to run unless the target is explicitly marked isolated, the exact confirmation phrase is present, and the target database name ends in `_restore` or `_drill`. It also rejects a target with the same host/port/database identity as the source. This is a guardrail, not a substitute for verifying the connection details yourself.
+
+Set:
+
+- `DATABASE_URL`: source/production database URL used only for identity comparison.
+- `RESTORE_DATABASE_URL`: connection URL for a dedicated disposable restore database.
+- `RESTORE_TARGET_ISOLATED=true`.
+- `RESTORE_TARGET_CONFIRMATION=I_CONFIRM_ISOLATED_RESTORE`.
+- `BACKUP_AGE_IDENTITY_FILE`: private age identity file.
+- `CLONE_ENCRYPTION_KEY`: the exact existing stable clone key, supplied through the existing secret-file mechanism or protected environment.
+
+The target must be a disposable database named with the `_restore` or `_drill` suffix, e.g. `anitoon4_restore`. Then run from the matching application source revision:
+
+```bash
+python scripts/backup.py restore-drill /secure/off-host-staging/anitoon/<backup>.manifest.json
+```
+
+The script decrypts and restores only to the confirmed target, then runs `go run ./cmd/backup-verify` against it. That verifier is read-only: it compares every applied migration version, filename and SHA-256 checksum against the embedded SQL in the checked-out application revision, and authenticates each stored clone token ciphertext with the existing `CLONE_ENCRYPTION_KEY`. It validates the token's bot-ID prefix without printing the token. A mismatch fails the drill; the verifier never applies migrations or changes production.
+
+A successful restore drill is evidence for that exact backup, application revision, migration set, age identity and clone encryption key. Repeat it after application migrations, key-management changes, PostgreSQL major-version changes, or backup pipeline changes. Do not infer recoverability from a successful `pg_dump` alone.
+
+### Limitations and operator responsibilities
+
+- Scheduling, off-host upload, retention, alerting, restore orchestration and RPO/RTO monitoring are not automated by this feature. Run the tool from a protected backup host or a dedicated scheduler and alert on failures and backup age.
+- Keep the age private identity and `CLONE_ENCRYPTION_KEY` in separate secure escrow systems. Losing either makes the corresponding backup or saved clone credentials unrecoverable.
+- The SHA-256 manifest is not signed. Protect the manifest and archive with access controls and immutable/off-host storage.
+- The script requires a compatible `pg_dump`/ `pg_restore` client version. Test PostgreSQL major-version compatibility before production recovery.
+- The isolated restore command uses `--clean`; never point it at production. Do not set the confirmation flags in a normal application environment.
+- Temporary plaintext dumps are removed on normal exit and handled exceptions. For high-assurance environments, use an encrypted scratch filesystem and ensure host crash-dump/swap policy is appropriate.
+
 ## What must be backed up
 
 | Item | Why it matters | Backup approach |
