@@ -64,6 +64,7 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Backup manifest unit tests and CI coverage
 - [ ] Scheduled off-host backup orchestration, retention policy enforcement and alerting
 - [ ] Load, abuse and recovery tests
+- [x] Feature 19 (database baseline): bounded/configurable pgx pool sizing, deterministic warning-history index, config validation tests and deployment connection-budget guidance; workload-specific EXPLAIN/benchmark tuning remains pending production-like measurements.
 - [x] PostgreSQL-backed clone polling leases, fenced takeover, renewal and stop-on-lease-loss
 - [ ] Primary-bot polling supervisor and multi-instance deployment readiness
 
