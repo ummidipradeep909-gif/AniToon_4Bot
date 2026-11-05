@@ -48,7 +48,7 @@ def _pg_config(url: str) -> tuple[dict[str, str], str]:
         "PGSSLMODE": urllib.parse.parse_qs(parsed.query).get("sslmode", ["prefer"])[0],
     })
     password = urllib.parse.unquote(parsed.password or "")
-    if "\\n" in password or "\\r" in password:
+    if "\n" in password or "\r" in password:
         raise RuntimeError("database password contains unsupported line breaks")
     if password:
         # A private temporary password file avoids credentials in argv and logs.
@@ -208,7 +208,7 @@ def restore_drill(args: argparse.Namespace) -> None:
     try:
         _run(["age", "--decrypt", "--identity", identity, "--output", str(plaintext), str(archive)], os.environ.copy())
         # Destructive operation is limited to the separately confirmed target URL.
-        _run(["pg_restore", "--no-password", "--clean", "--if-exists", "--no-owner", "--no-privileges", "--exit-on-error", "--dbname", target_db, str(plaintext)], target_env)
+        _run(["pg_restore", "--no-password", "--clean", "--if-exists", "--no-owner", "--no-privileges", "--exit-on-error", "--single-transaction", "--dbname", target_db, str(plaintext)], target_env)
         # Run the application's read-only migration verifier against restored DB.
         verify_env = os.environ.copy()
         verify_env["DATABASE_URL"] = target_url
