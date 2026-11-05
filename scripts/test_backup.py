@@ -21,6 +21,8 @@ class BackupManifestTests(unittest.TestCase):
                 "manifest_version": 1,
                 "database": "anitoon",
                 "created_at": "2026-01-01T00:00:00+00:00",
+                "application_commit": "a" * 40,
+                "schema_migration_version": "16",
                 "format": "postgresql-custom-dump",
                 "encryption": "age",
                 "ciphertext_file": archive.name,
@@ -37,7 +39,9 @@ class BackupManifestTests(unittest.TestCase):
             manifest = root / "db.manifest.json"
             manifest.write_text(json.dumps({
                 "manifest_version": 1, "database": "db", "created_at": "now",
+                "created_at": "2026-01-01T00:00:00+00:00",
                 "format": "postgresql-custom-dump", "encryption": "age",
+                "application_commit": "a" * 40, "schema_migration_version": "16",
                 "ciphertext_file": archive.name, "ciphertext_sha256": "0" * 64,
             }), encoding="utf-8")
             args = type("Args", (), {"manifest": str(manifest)})()
@@ -49,7 +53,9 @@ class BackupManifestTests(unittest.TestCase):
             manifest = Path(directory) / "bad.json"
             manifest.write_text(json.dumps({
                 "manifest_version": 1, "database": "db", "created_at": "now",
+                "created_at": "2026-01-01T00:00:00+00:00",
                 "format": "postgresql-custom-dump", "encryption": "age",
+                "application_commit": "a" * 40, "schema_migration_version": "16",
                 "ciphertext_file": "../outside.dump.age", "ciphertext_sha256": "a" * 64,
             }), encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "archive path"):
@@ -70,7 +76,9 @@ class BackupManifestTests(unittest.TestCase):
             manifest = Path(directory) / "bad.json"
             manifest.write_text(json.dumps({
                 "manifest_version": 2, "database": "db", "created_at": "now",
+                "created_at": "2026-01-01T00:00:00+00:00",
                 "format": "postgresql-custom-dump", "encryption": "age",
+                "application_commit": "a" * 40, "schema_migration_version": "16",
                 "ciphertext_file": "db.dump.age", "ciphertext_sha256": "a" * 64,
             }), encoding="utf-8")
             with self.assertRaisesRegex(RuntimeError, "unsupported"):
