@@ -17,6 +17,7 @@ func VerifyBackupCredentials(ctx context.Context, db *pgxpool.Pool, encodedKey s
 	if db == nil { return 0, fmt.Errorf("clone credential verification requires PostgreSQL") }
 	key, err := parseEncryptionKey(encodedKey)
 	if err != nil { return 0, fmt.Errorf("clone credential verification key is invalid") }
+	defer func() { for i := range key { key[i] = 0 } }()
 	block, err := aes.NewCipher(key)
 	if err != nil { return 0, fmt.Errorf("clone credential verifier could not initialize cipher") }
 	gcm, err := cipher.NewGCM(block)
