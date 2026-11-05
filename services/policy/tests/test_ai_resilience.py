@@ -4,6 +4,8 @@ import unittest
 import httpx
 from fastapi import HTTPException
 from app.security import require_service_token
+from fastapi import HTTPException
+from app.security import require_service_token
 
 from app.ai import analyze_message
 
