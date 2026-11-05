@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 from redis.asyncio import Redis
 from .ai import analyze_message
 from .config import settings
+from .security import require_service_token
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -44,18 +45,9 @@ async def health():
     return {"status": "ok", "service": "policy", "database": "ok", "redis": "ok",
             "ai_enabled": bool(settings.ai_enabled and settings.openai_api_key and settings.ai_service_token)}
 
-def _require_service_token(candidate: str) -> None:
-    # Constant-time comparison and fail-closed behavior when the shared token
-    # is not configured. Never expose configured token state in the response.
-    if not settings.ai_service_token or not secrets.compare_digest(
-        candidate, settings.ai_service_token
-    ):
-        raise HTTPException(status_code=401, detail="unauthorized")
-
-
 @app.post("/v1/policy/evaluate")
 async def evaluate(signal: MessageSignal, x_ai_service_token: str = Header(default="")):
-    _require_service_token(x_ai_service_token)
+    require_service_token(x_ai_service_token, settings.ai_service_token)
     key = f"rate:{signal.chat_id}:{signal.user_id}"
     count = await app.state.redis.incr(key)
     if count == 1:
