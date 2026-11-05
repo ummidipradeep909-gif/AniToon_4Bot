@@ -58,13 +58,44 @@ jobs:
 
   backup-tooling:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: anitoon4
+          POSTGRES_PASSWORD: test-password
+          POSTGRES_DB: anitoon4_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U anitoon4 -d anitoon4_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://anitoon4:test-password@localhost:5432/anitoon4_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install PostgreSQL and age client tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y age postgresql-client
+      - name: Generate ephemeral age identity for CI
+        run: |
+          age-keygen -o "$RUNNER_TEMP/backup-age-identity" 2>/dev/null
+          echo "BACKUP_AGE_IDENTITY_FILE=$RUNNER_TEMP/backup-age-identity" >> "$GITHUB_ENV"
+          echo "BACKUP_AGE_RECIPIENT=$(age-keygen -y "$RUNNER_TEMP/backup-age-identity")" >> "$GITHUB_ENV"
       - name: Test encrypted backup manifest handling
         run: python -m unittest scripts.test_backup -v
+      - name: Exercise encrypted PostgreSQL backup and archive verification
+        run: |
+          python scripts/backup.py create --output "$RUNNER_TEMP/backups"
+          manifest=$(find "$RUNNER_TEMP/backups" -maxdepth 1 -name '*.manifest.json' -print -quit)
+          test -n "$manifest"
+          python scripts/backup.py verify "$manifest"
       - name: Compile backup tooling
         run: python -m py_compile scripts/backup.py scripts/test_backup.py
 
