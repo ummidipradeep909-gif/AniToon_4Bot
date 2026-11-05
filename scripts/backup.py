@@ -111,11 +111,6 @@ def _application_commit() -> str:
 
 
 def _migration_version() -> str:
-    configured = os.environ.get("EXPECTED_MIGRATION_VERSION", "").strip()
-    if configured:
-        if not configured.isdigit() or int(configured) <= 0:
-            raise RuntimeError("expected migration version must be a positive integer")
-        return str(int(configured))
     versions = []
     for path in Path("migrations").glob("[0-9]*_*.sql"):
         prefix = path.name.split("_", 1)[0]
@@ -123,7 +118,12 @@ def _migration_version() -> str:
             versions.append(int(prefix))
     if not versions:
         raise RuntimeError("could not determine application migration version")
-    return str(max(versions))
+    latest = max(versions)
+    configured = os.environ.get("EXPECTED_MIGRATION_VERSION", "").strip()
+    if configured:
+        if not configured.isdigit() or int(configured) != latest:
+            raise RuntimeError("expected migration version does not match the checked-out migrations")
+    return str(latest)
 
 
 def create_backup(args: argparse.Namespace) -> None:
