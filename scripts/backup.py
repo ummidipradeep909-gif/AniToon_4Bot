@@ -152,7 +152,10 @@ def load_manifest(path: Path) -> dict:
 
 
 def verify_backup(args: argparse.Namespace) -> Path:
-    manifest_path = Path(args.manifest).resolve()
+    manifest_path = Path(args.manifest)
+    if manifest_path.is_symlink():
+        raise RuntimeError("manifest must not be a symbolic link")
+    manifest_path = manifest_path.resolve()
     metadata = load_manifest(manifest_path)
     archive = manifest_path.parent / metadata["ciphertext_file"]
     if archive.is_symlink() or not archive.is_file():
