@@ -38,8 +38,7 @@ class BackupManifestTests(unittest.TestCase):
             archive.write_bytes(b"ciphertext")
             manifest = root / "db.manifest.json"
             manifest.write_text(json.dumps({
-                "manifest_version": 1, "database": "db", "created_at": "now",
-                "created_at": "2026-01-01T00:00:00+00:00",
+                "manifest_version": 1, "database": "db",                "created_at": "2026-01-01T00:00:00+00:00",
                 "format": "postgresql-custom-dump", "encryption": "age",
                 "application_commit": "a" * 40, "schema_migration_version": "16",
                 "ciphertext_file": archive.name, "ciphertext_sha256": "0" * 64,
@@ -52,8 +51,7 @@ class BackupManifestTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "bad.json"
             manifest.write_text(json.dumps({
-                "manifest_version": 1, "database": "db", "created_at": "now",
-                "created_at": "2026-01-01T00:00:00+00:00",
+                "manifest_version": 1, "database": "db",                 "created_at": "2026-01-01T00:00:00+00:00",
                 "format": "postgresql-custom-dump", "encryption": "age",
                 "application_commit": "a" * 40, "schema_migration_version": "16",
                 "ciphertext_file": "../outside.dump.age", "ciphertext_sha256": "a" * 64,
