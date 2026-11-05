@@ -6,7 +6,7 @@ This guide covers the durable PostgreSQL data used by AniToon_4Bot and the encry
 
 The repository includes `scripts/backup.py`. It uses PostgreSQL custom-format dumps and [age](https://age-encryption.org/) public-key encryption. The age recipient is public and can be stored in deployment configuration; the matching age identity is private and must be kept separately from the backup destination. The script does not put database passwords in process arguments: libpq receives credentials through a mode-0600 temporary password file, removed after the operation.
 
-Install PostgreSQL client tools (`pg_dump`, `pg_restore`), age, Python 3.12+, Go 1.24+, and the application source revision matching the backup.
+Install PostgreSQL client tools (`pg_dump`, `pg_restore`, `psql`), age, Python 3.12+, Go 1.24+, and the application source revision matching the backup.
 
 ### Create an encrypted backup
 
@@ -38,7 +38,7 @@ Verification checks the manifest schema, rejects path traversal and non-regular 
 
 ### Run an isolated restore drill
 
-The restore drill is intentionally destructive to its target database: `pg_restore --clean --if-exists` replaces objects in that database. It refuses to run unless the target is explicitly marked isolated, the exact confirmation phrase is present, and the target database name ends in `_restore` or `_drill`. It also rejects a target with the same host/port/database identity as the source. This is a guardrail, not a substitute for verifying the connection details yourself.
+The restore drill refuses to run unless the target is explicitly marked isolated, the exact confirmation phrase is present, and the target database name ends in `_restore` or `_drill`. It also rejects a target with the same host/port/database identity as the source and requires the target to contain no user tables, views, sequences or foreign tables. It uses a single-transaction restore without `--clean`, so it will not drop existing objects. This is a guardrail, not a substitute for verifying the connection details yourself.
 
 Set:
 
