@@ -8,6 +8,7 @@ const HelpText = `<b>AniToon_4Bot — Group Management</b>
 /id — show chat and user IDs (reply to inspect another member)
 /info [user_id] — show member details (reply or omit ID for yourself)
 /admins — list current group administrators
+/dashboard — private system health and aggregate clone status (configured owner only)
 
 <b>Clone setup (main bot private chat)</b>
 /clone — connect your own BotFather bot token
