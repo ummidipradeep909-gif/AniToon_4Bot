@@ -86,14 +86,15 @@ def _cleanup_pgpass(env: dict[str, str]) -> None:
 
 
 def _application_commit() -> str:
+    checked_out = subprocess.run(
+        ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
+    ).stdout.strip()
     configured = os.environ.get("APP_COMMIT", "").strip()
-    if configured:
-        commit = configured
-    else:
-        commit = subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
-    if not re.fullmatch(r"[0-9a-f]{40}", commit):
-        raise RuntimeError("application commit must be a full 40-character Git SHA")
-    return commit
+    if not re.fullmatch(r"[0-9a-f]{40}", checked_out):
+        raise RuntimeError("checked-out application revision is not a full Git SHA")
+    if configured and configured != checked_out:
+        raise RuntimeError("APP_COMMIT does not match the checked-out application revision")
+    return checked_out
 
 
 def _migration_version() -> str:
