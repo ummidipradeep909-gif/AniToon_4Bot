@@ -281,7 +281,7 @@ Legacy environment-variable deployments remain supported. Go and Python services
 
 ## Clone health monitoring
 
-Enabled clones are reconciled automatically, with safe health states and capped retry backoff. See [clone health monitoring](docs/operations/CLONE_HEALTH_MONITORING.md). Multi-instance lease coordination remains a separate deployment requirement.
+Enabled clones are reconciled automatically, with safe health states and capped retry backoff. See [clone health monitoring](docs/operations/CLONE_HEALTH_MONITORING.md). Clone polling uses PostgreSQL-backed per-bot leases with renewal and fail-safe stop on lease loss. See docs/operations/MULTI_INSTANCE.md. Primary polling remains single-instance until its supervisor is enabled.
 
 
 ## Owner dashboard
