@@ -2,6 +2,8 @@
 
 A Telegram group-management bot with a Go runtime, Python policy-service foundation, PostgreSQL and Redis. Features are being added incrementally; this is not yet a complete Rose Bot replacement.
 
+Current verified runtime behavior is documented in [`docs/architecture/CURRENT_SYSTEM_GUIDE.md`](docs/architecture/CURRENT_SYSTEM_GUIDE.md). To choose future enhancements, see [`docs/FEATURE_REVIEW_QUESTIONNAIRE.md`](docs/FEATURE_REVIEW_QUESTIONNAIRE.md).
+
 ## Implemented commands
 
 - `/start` and `/help`. `/id` shows chat ID/type/title and your user ID; reply to a member's message to show their ID. `/info` shows your own Telegram member details, or accepts a reply/numeric ID for another member. `/admins` fetches the current live group administrator list, including owner/admin roles and custom admin titles.
@@ -51,12 +53,12 @@ Use /cancel to cancel pending setup. Setup expires after 10 minutes. Only one cl
 - PostgreSQL enforces one clone per owner (`UNIQUE(owner_id)`) and one owner per clone bot (`PRIMARY KEY(bot_id)`). The primary AniToon_4Bot is never stored as a user's clone.
 - New clones are validated with Telegram first, persisted before polling starts, and removed from storage if polling cannot start. A database failure never starts an unpersisted clone.
 - At startup, saved credentials are decrypted, revalidated with Telegram and restarted independently. A failed clone recovery is logged by numeric IDs only and does not prevent the main bot from starting.
-- New clone creation is refused unless both PostgreSQL and a valid encryption key are available. The main bot can still start when either is unavailable; clone recovery is skipped in that case.
+- New clone creation is refused unless both PostgreSQL and a valid encryption key are available. PostgreSQL and Redis are required for the Go service itself; if either dependency is unavailable, startup is refused.
 - The clone's existing webhook must be removed before connection. If another host is polling the bot, stop it first.
 - `/clonestatus`, `/clonepause`, `/cloneresume` and `/cloneremove` are accepted only in the main bot's private chat and resolve ownership from the authenticated Telegram user ID. Owners cannot control another owner's clone.
 - Paused state is stored in PostgreSQL and survives restarts; startup recovery leaves paused clones stopped. Resume revalidates the encrypted credential with Telegram before polling. Removal stops that clone and deletes its encrypted credential.
 - `CLONE_MAX_BOTS` sets a shared global registered-clone quota (default 100; accepted range 1–10000). PostgreSQL advisory transaction locking makes quota checks atomic across concurrent registrations. One clone per owner remains enforced by the database.
-- This remains a single-process clone runner, not a multi-instance hosting platform. Distributed multi-host polling locks and per-clone resource/rate-limit budgets are not implemented.
+- Clone poller ownership is coordinated across processes sharing PostgreSQL using durable per-bot leases (90-second TTL, 20-second renewal, fenced takeover and stop-on-lease-loss). The primary bot still lacks a distributed polling supervisor, so the complete service is not safe to scale horizontally. Telegram API side effects are not exactly-once; per-clone resource/rate-limit budgets are not implemented.
 - The owner is responsible for the bot token and for configuring their clone's privacy and group administrator permissions.
 
 **Encryption key setup (required for persistent clones):**
@@ -242,7 +244,7 @@ WEBHOOK_LISTEN_ADDR=
 - Send SIGTERM (normal container stop) or SIGINT to initiate graceful shutdown. The updater stops the webhook server and all primary/clone update loops, then PostgreSQL and Redis connections close.
 - For a reverse proxy, configure a suitable request-body limit and forward requests only to the bot's listener. Do not configure Telegram to call the internal listener address directly.
 
-When switching from polling to webhook mode, deploy one instance only and ensure no other host is polling the primary bot token. When switching back to polling, Gotgbot removes the webhook before polling starts. Do not run multiple replicas with the same primary or clone bot tokens; distributed ownership/leases are not implemented.
+When switching from polling to webhook mode, deploy one primary-bot instance only and ensure no other host is polling the primary bot token. When switching back to polling, Gotgbot removes the webhook before polling starts. Clone pollers use PostgreSQL-backed leases, but the primary bot has no distributed supervisor. Do not scale the complete service horizontally or run multiple primary instances with the same token yet.
 
 ## Development
 
