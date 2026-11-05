@@ -210,32 +210,11 @@ def verify_backup(args: argparse.Namespace) -> Path:
 
 def restore_drill(args: argparse.Namespace) -> None:
     verify_backup(args)
-    confirmation = _required("RESTORE_TARGET_CONFIRMATION")
-    if confirmation != "I_CONFIRM_ISOLATED_RESTORE":
+    if _required("RESTORE_TARGET_CONFIRMATION") != "I_CONFIRM_ISOLATED_RESTORE":
         raise RuntimeError("isolated restore confirmation is missing")
     if _required("RESTORE_TARGET_ISOLATED") != "true":
         raise RuntimeError("restore target is not explicitly marked isolated")
-    source_url = _required("DATABASE_URL")
-    target_url = _required("RESTORE_DATABASE_URL")
-    source_env, source_db = _pg_config(source_url)
-    try:
-        target_env, target_db = _pg_config(target_url)
-    except Exception:
-        _cleanup_pgpass(source_env)
-        raise
-    # Reject same endpoint/database and same database name conservatively.
-    if (source_env["PGHOST"], source_env["PGPORT"], source_db) == (target_env["PGHOST"], target_env["PGPORT"], target_db):
-        _cleanup_pgpass(source_env)
-        _cleanup_pgpass(target_env)
-        raise RuntimeError("restore target resolves to the source production database")
-    if not target_db.endswith(("_restore", "_drill")):
-        _cleanup_pgpass(source_env)
-        _cleanup_pgpass(target_env)
-        raise RuntimeError("restore target database name must end in _restore or _drill")
-    if source_db == target_db and source_env["PGHOST"] == target_env["PGHOST"]:
-        _cleanup_pgpass(source_env)
-        _cleanup_pgpass(target_env)
-        raise RuntimeError("restore target is not sufficiently isolated")
+
     manifest_path = Path(args.manifest)
     if manifest_path.is_symlink():
         raise RuntimeError("manifest must not be a symbolic link")
@@ -243,35 +222,54 @@ def restore_drill(args: argparse.Namespace) -> None:
     metadata = load_manifest(manifest_path)
     if metadata["application_commit"] != _application_commit():
         raise RuntimeError("backup application commit does not match the checked-out source revision")
-    archive = manifest_path.parent / metadata["ciphertext_file"]
     identity = _required("BACKUP_AGE_IDENTITY_FILE")
-    with tempfile.NamedTemporaryFile(prefix="anitoon-restore-", suffix=".dump", delete=False) as plain:
-        plaintext = Path(plain.name)
-    os.chmod(plaintext, 0o600)
+
+    source_env, source_db = _pg_config(_required("DATABASE_URL"))
+    target_env: dict[str, str] = {}
     try:
-        _run(["age", "--decrypt", "--identity", identity, "--output", str(plaintext), str(archive)], os.environ.copy())
-        # Destructive operation is limited to the separately confirmed target URL.
-        _run(["pg_restore", "--no-password", "--clean", "--if-exists", "--no-owner", "--no-privileges", "--exit-on-error", "--single-transaction", "--dbname", target_db, str(plaintext)], target_env)
-        # Run the application's read-only migration verifier against restored DB.
-        verify_env = os.environ.copy()
-        verify_env["DATABASE_URL"] = target_url
-        verification = subprocess.run(
-            ["go", "run", "./cmd/backup-verify"], env=verify_env,
-            check=True, stdin=subprocess.DEVNULL, capture_output=True, text=True,
-        )
-        report = json.loads(verification.stdout)
-        if str(report.get("latest_migration_version")) != str(metadata["schema_migration_version"]):
-            raise RuntimeError("restored migration version does not match the backup manifest")
-        print(json.dumps({
-            "restore_drill": "passed",
-            "target_database": target_db,
-            "archive": archive.name,
-            "application_commit": metadata["application_commit"],
-            "schema_migration_version": metadata["schema_migration_version"],
-            "clone_credentials_verified": report.get("clone_credentials_verified", False),
-        }))
+        target_env, target_db = _pg_config(_required("RESTORE_DATABASE_URL"))
+        if (source_env["PGHOST"], source_env["PGPORT"], source_db) == (
+            target_env["PGHOST"], target_env["PGPORT"], target_db
+        ):
+            raise RuntimeError("restore target resolves to the source production database")
+        if not target_db.endswith(("_restore", "_drill")):
+            raise RuntimeError("restore target database name must end in _restore or _drill")
+
+        archive = manifest_path.parent / metadata["ciphertext_file"]
+        with tempfile.NamedTemporaryFile(prefix="anitoon-restore-", suffix=".dump", delete=False) as plain:
+            plaintext = Path(plain.name)
+        os.chmod(plaintext, 0o600)
+        try:
+            _run(["age", "--decrypt", "--identity", identity, "--output", str(plaintext), str(archive)], os.environ.copy())
+            # Destructive operation is limited to the separately confirmed target URL.
+            _run([
+                "pg_restore", "--no-password", "--clean", "--if-exists",
+                "--no-owner", "--no-privileges", "--exit-on-error",
+                "--single-transaction", "--dbname", target_db, str(plaintext),
+            ], target_env)
+            verify_env = os.environ.copy()
+            verify_env["DATABASE_URL"] = _required("RESTORE_DATABASE_URL")
+            verification = subprocess.run(
+                ["go", "run", "./cmd/backup-verify"], env=verify_env,
+                check=True, stdin=subprocess.DEVNULL, capture_output=True, text=True,
+            )
+            report = json.loads(verification.stdout)
+            if str(report.get("latest_migration_version")) != str(metadata["schema_migration_version"]):
+                raise RuntimeError("restored migration version does not match the backup manifest")
+            if report.get("ledger_verified") is not True or report.get("clone_credentials_verified") is not True:
+                raise RuntimeError("restored database integrity verification was incomplete")
+            print(json.dumps({
+                "restore_drill": "passed",
+                "target_database": target_db,
+                "archive": archive.name,
+                "application_commit": metadata["application_commit"],
+                "schema_migration_version": metadata["schema_migration_version"],
+                "clone_credentials_verified": True,
+                "clone_credentials": report.get("clone_credentials", 0),
+            }))
+        finally:
+            plaintext.unlink(missing_ok=True)
     finally:
-        plaintext.unlink(missing_ok=True)
         _cleanup_pgpass(source_env)
         _cleanup_pgpass(target_env)
 
