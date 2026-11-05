@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -59,7 +58,3 @@ func VerifyLedger(ctx context.Context, pool *pgxpool.Pool) (latestVersion int64,
 	}
 	return latestVersion, len(actual), nil
 }
-
-// Keep pgx referenced at compile time as this package deliberately distinguishes
-// the ledger's missing-table state from a valid, empty migration history.
-var _ = pgx.ErrNoRows
