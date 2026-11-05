@@ -39,6 +39,21 @@ The policy service is exposed only on the Compose network. Do not publish port 8
 on a public interface. Put webhook mode behind an HTTPS reverse proxy and forward
 only the configured webhook path to the bot listener. Polling is the default.
 
+## PostgreSQL connection pool sizing
+
+The Go process uses bounded pgx pool settings configured with `DB_POOL_MAX_CONNS`,
+`DB_POOL_MIN_CONNS`, `DB_POOL_MAX_LIFETIME_SECONDS`,
+`DB_POOL_MAX_IDLE_SECONDS` and `DB_POOL_HEALTH_CHECK_SECONDS`.
+Defaults are conservative for a single process. For multi-instance deployments,
+calculate the total maximum as:
+
+`replica_count × DB_POOL_MAX_CONNS + policy_service_connections + operational_headroom`
+
+Keep that total below PostgreSQL's usable connection limit, leaving capacity for
+administration, migrations and failover. Do not copy the single-instance default
+unchanged to every replica without checking the database plan. Invalid values
+fail startup rather than being silently clamped.
+
 ## Secret handling and rotation status
 
 - Prefer the hosting provider's secret manager over a long-lived environment file.

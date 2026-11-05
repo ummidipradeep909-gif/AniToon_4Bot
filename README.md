@@ -29,6 +29,10 @@ A Telegram group-management bot with a Go runtime, Python policy-service foundat
 - Mute durations: 30s, 15m, 2h, 3d, 1w, and combinations such as 1d12h. Omit the duration for a permanent mute. Temporary mutes are limited to 30 seconds–366 days.
 
 ## Create your own clone bot
+## Database performance configuration
+
+The Go runtime applies bounded pgx pool settings from `DB_POOL_*` variables. Defaults are sized conservatively from available CPU cores (4× cores, bounded to 4–32 maximum connections), with zero minimum connections, a 30-minute maximum connection lifetime, 5-minute idle lifetime and 60-second health checks. Configure `DB_POOL_MAX_CONNS` against the PostgreSQL connection budget for the whole deployment—not per process in isolation. Valid ranges: max connections 2–100, min connections 0–max, max lifetime 60–86400 seconds, idle lifetime 0–3600 seconds, health check 5–600 seconds. Invalid settings fail startup.
+
 
 The /start screen has a **🤖 Create Your Own Clone Bot** button that opens the official [@BotFather](https://t.me/BotFather).
 

@@ -48,7 +48,17 @@ func main() {
  var db *pgxpool.Pool
  databaseURL:=cfg.DatabaseURL
  if databaseURL!="" {
-  db,err=pgxpool.New(context.Background(),databaseURL)
+  poolConfig, configErr := pgxpool.ParseConfig(databaseURL)
+  if configErr != nil {
+   err = configErr
+  } else {
+   poolConfig.MaxConns = cfg.DBPoolMaxConns
+   poolConfig.MinConns = cfg.DBPoolMinConns
+   poolConfig.MaxConnLifetime = cfg.DBPoolMaxConnLifetime
+   poolConfig.MaxConnIdleTime = cfg.DBPoolMaxConnIdleTime
+   poolConfig.HealthCheckPeriod = cfg.DBPoolHealthCheckPeriod
+   db, err = pgxpool.NewWithConfig(context.Background(), poolConfig)
+  }
   if err==nil {
    pingCtx,cancel:=context.WithTimeout(context.Background(),5*time.Second)
    err=db.Ping(pingCtx)

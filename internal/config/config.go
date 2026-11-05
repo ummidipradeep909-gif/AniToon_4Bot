@@ -6,8 +6,10 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/ummidipradeep909-gif/AniToon_4Bot/internal/secrets"
 )
@@ -19,6 +21,11 @@ type Config struct {
 	Mode, LogLevel, WebhookURL, WebhookPath, WebhookListenAddr, WebhookSecretToken string
 	PolicyServiceURL string
 	OwnerID int64
+	DBPoolMaxConns int32
+	DBPoolMinConns int32
+	DBPoolMaxConnLifetime time.Duration
+	DBPoolMaxConnIdleTime time.Duration
+	DBPoolHealthCheckPeriod time.Duration
 }
 
 func Load() (Config, error) {
@@ -34,6 +41,23 @@ func Load() (Config, error) {
 	}
 	key,e:=base64.StdEncoding.DecodeString(c.CloneEncryptionKey)
 	if e!=nil || len(key)!=32 { return Config{},fmt.Errorf("CLONE_ENCRYPTION_KEY must be the existing base64-encoded 32-byte AES key") }
+	maxDefault := runtime.NumCPU() * 4
+	if maxDefault < 4 { maxDefault = 4 }
+	if maxDefault > 32 { maxDefault = 32 }
+	maxConns, parseErr := boundedIntEnv("DB_POOL_MAX_CONNS", maxDefault, 2, 100)
+	if parseErr != nil { return Config{}, parseErr }
+	minConns, parseErr := boundedIntEnv("DB_POOL_MIN_CONNS", 0, 0, maxConns)
+	if parseErr != nil { return Config{}, parseErr }
+	maxLifetime, parseErr := boundedDurationEnv("DB_POOL_MAX_LIFETIME_SECONDS", 1800, 60, 86400)
+	if parseErr != nil { return Config{}, parseErr }
+	maxIdle, parseErr := boundedDurationEnv("DB_POOL_MAX_IDLE_SECONDS", 300, 0, 3600)
+	if parseErr != nil { return Config{}, parseErr }
+	healthPeriod, parseErr := boundedDurationEnv("DB_POOL_HEALTH_CHECK_SECONDS", 60, 5, 600)
+	if parseErr != nil { return Config{}, parseErr }
+	c.DBPoolMaxConns, c.DBPoolMinConns = int32(maxConns), int32(minConns)
+	c.DBPoolMaxConnLifetime, c.DBPoolMaxConnIdleTime = maxLifetime, maxIdle
+	c.DBPoolHealthCheckPeriod = healthPeriod
+
 	ownerValue := strings.TrimSpace(os.Getenv("BOT_OWNER_ID"))
 	if ownerValue != "" {
 		c.OwnerID, err = strconv.ParseInt(ownerValue, 10, 64)
@@ -56,4 +80,20 @@ func Load() (Config, error) {
 		if !webhookSecretPattern.MatchString(c.WebhookSecretToken) { return Config{},fmt.Errorf("WEBHOOK_SECRET_TOKEN contains unsupported characters") }
 	}
 	return c,nil
+}
+
+func boundedIntEnv(name string, fallback, min, max int) (int, error) {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" { return fallback, nil }
+	parsed, err := strconv.Atoi(value)
+	if err != nil || parsed < min || parsed > max {
+		return 0, fmt.Errorf("%s must be an integer between %d and %d", name, min, max)
+	}
+	return parsed, nil
+}
+
+func boundedDurationEnv(name string, fallback, min, max int) (time.Duration, error) {
+	seconds, err := boundedIntEnv(name, fallback, min, max)
+	if err != nil { return 0, err }
+	return time.Duration(seconds) * time.Second, nil
 }
