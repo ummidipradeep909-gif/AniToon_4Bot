@@ -67,3 +67,22 @@ class AIResilienceTests(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    async def test_policy_service_authentication_is_required_and_constant_time(self):
+        from unittest.mock import patch
+        from fastapi import HTTPException
+        from app.main import _require_service_token
+
+        with patch("app.main.settings.ai_service_token", "shared-secret"):
+            _require_service_token("shared-secret")
+            with self.assertRaises(HTTPException) as missing:
+                _require_service_token("")
+            self.assertEqual(missing.exception.status_code, 401)
+            with self.assertRaises(HTTPException) as invalid:
+                _require_service_token("wrong-secret")
+            self.assertEqual(invalid.exception.status_code, 401)
+
+        with patch("app.main.settings.ai_service_token", ""):
+            with self.assertRaises(HTTPException) as unconfigured:
+                _require_service_token("anything")
+            self.assertEqual(unconfigured.exception.status_code, 401)
