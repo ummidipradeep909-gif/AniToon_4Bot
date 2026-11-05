@@ -14,8 +14,8 @@ Configure these values in the protected shell environment or a secret-file loade
 
 - `DATABASE_URL`: source PostgreSQL connection URL.
 - `BACKUP_AGE_RECIPIENT`: age public recipient string (not a secret).
-- `APP_COMMIT`: exact application commit being backed up.
-- `EXPECTED_MIGRATION_VERSION`: current migration version for the manifest.
+- The script records the checked-out Git commit automatically and rejects a conflicting `APP_COMMIT` override.
+- The script derives the latest migration version from the numbered SQL files. `EXPECTED_MIGRATION_VERSION` may be set to require an explicit version.
 
 Then run:
 
@@ -49,7 +49,7 @@ Set:
 - `BACKUP_AGE_IDENTITY_FILE`: private age identity file.
 - `CLONE_ENCRYPTION_KEY`: the exact existing stable clone key, supplied through the existing secret-file mechanism or protected environment.
 
-The target must be a disposable database named with the `_restore` or `_drill` suffix, e.g. `anitoon4_restore`. Then run from the matching application source revision:
+The target must be a disposable database named with the `_restore` or `_drill` suffix, e.g. `anitoon4_restore`. Run from the exact Git commit recorded in the manifest; the tool rejects a different checked-out revision and verifies that the restored migration version matches the manifest:
 
 ```bash
 python scripts/backup.py restore-drill /secure/off-host-staging/anitoon/<backup>.manifest.json
