@@ -55,6 +55,16 @@ class BackupManifestTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "archive path"):
                 backup.load_manifest(manifest)
 
+    def test_rejects_symlinked_manifest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / "target.json"
+            target.write_text("{}", encoding="utf-8")
+            link = root / "link.json"
+            link.symlink_to(target)
+            with self.assertRaisesRegex(RuntimeError, "symbolic link"):
+                backup.load_manifest(link)
+
     def test_rejects_unsupported_manifest_version(self):
         with tempfile.TemporaryDirectory() as directory:
             manifest = Path(directory) / "bad.json"
