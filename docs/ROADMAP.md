@@ -59,6 +59,10 @@ The aim is a broad, reliable group-management bot. The list below is a target in
 - [x] Operator-driven PostgreSQL and Redis password rotation runbook with maintenance sequencing, dependency validation and rollback
 - [x] Docker Secrets overlay and file-based secret loading for bot, database, Redis, policy authentication, AI provider and stable clone encryption credentials; legacy environment variables remain supported
 - [ ] Automated/zero-downtime credential rotation with dual credentials and managed secret-manager integration
+- [x] Encrypted PostgreSQL backup tooling with age public-key encryption, SHA-256 manifests, archive verification and isolated restore drill safeguards
+- [x] Read-only migration-ledger and clone ciphertext authentication verification for restored databases
+- [x] Backup manifest unit tests and CI coverage
+- [ ] Scheduled off-host backup orchestration, retention policy enforcement and alerting
 - [ ] Load, abuse and recovery tests
 - [x] PostgreSQL-backed clone polling leases, fenced takeover, renewal and stop-on-lease-loss
 - [ ] Primary-bot polling supervisor and multi-instance deployment readiness

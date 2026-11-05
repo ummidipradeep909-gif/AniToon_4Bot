@@ -33,6 +33,11 @@ func TestEmbeddedMigrationsApplyTwiceOnFreshSchema(t *testing.T) {
 	var applied int
 	if err = pool.QueryRow(ctx, "SELECT COUNT(*) FROM schema_migrations").Scan(&applied); err != nil { t.Fatal(err) }
 	if applied != 16 { t.Fatalf("got %d embedded migrations, want 16", applied) }
+	version, verified, err := VerifyLedger(ctx, pool)
+	if err != nil { t.Fatalf("verify restored migration ledger: %v", err) }
+	if version != 16 || verified != applied { t.Fatalf("verified version/count = %d/%d, want 16/%d", version, verified, applied) }
+	if _, err = pool.Exec(ctx, "UPDATE schema_migrations SET checksum = $1 WHERE version = 1", "tampered"); err != nil { t.Fatal(err) }
+	if _, _, err = VerifyLedger(ctx, pool); err == nil { t.Fatal("expected checksum mismatch to fail verification") }
 	var enabledColumn bool
 	if err = pool.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=$1 AND table_name='clone_credentials' AND column_name='enabled')", schema).Scan(&enabledColumn); err != nil { t.Fatal(err) }
 	if !enabledColumn { t.Fatal("clone lifecycle migration did not add enabled column") }
