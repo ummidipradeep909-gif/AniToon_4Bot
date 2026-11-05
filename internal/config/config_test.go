@@ -71,3 +71,45 @@ func TestLoadDoesNotExposeSecretContents(t *testing.T) {
 }
 
 func TestLoadOwnerID(t *testing.T) { requiredEnv(t); t.Setenv("BOT_OWNER_ID","123456"); got,err:=Load(); if err!=nil || got.OwnerID!=123456 { t.Fatalf("owner ID: %#v %v",got,err) }; requiredEnv(t); t.Setenv("BOT_OWNER_ID","0"); if _,err:=Load(); err==nil { t.Fatal("zero owner ID accepted") } }
+
+func TestLoadPostgresPoolDefaultsAndOverrides(t *testing.T) {
+ requiredEnv(t)
+ got, err := Load()
+ if err != nil { t.Fatalf("Load(): %v", err) }
+ if got.DBPoolMaxConns < 4 || got.DBPoolMaxConns > 32 || got.DBPoolMinConns != 0 {
+  t.Fatalf("unexpected pool defaults: max=%d min=%d", got.DBPoolMaxConns, got.DBPoolMinConns)
+ }
+ if got.DBPoolMaxConnLifetime != 30*time.Minute || got.DBPoolMaxConnIdleTime != 5*time.Minute || got.DBPoolHealthCheckPeriod != time.Minute {
+  t.Fatalf("unexpected pool durations: %#v", got)
+ }
+ requiredEnv(t)
+ t.Setenv("DB_POOL_MAX_CONNS", "24")
+ t.Setenv("DB_POOL_MIN_CONNS", "4")
+ t.Setenv("DB_POOL_MAX_LIFETIME_SECONDS", "900")
+ t.Setenv("DB_POOL_MAX_IDLE_SECONDS", "120")
+ t.Setenv("DB_POOL_HEALTH_CHECK_SECONDS", "30")
+ got, err = Load()
+ if err != nil { t.Fatalf("Load() with overrides: %v", err) }
+ if got.DBPoolMaxConns != 24 || got.DBPoolMinConns != 4 || got.DBPoolMaxConnLifetime != 15*time.Minute || got.DBPoolMaxConnIdleTime != 2*time.Minute || got.DBPoolHealthCheckPeriod != 30*time.Second {
+  t.Fatalf("pool overrides not applied: %#v", got)
+ }
+}
+
+func TestLoadRejectsInvalidPostgresPoolSettings(t *testing.T) {
+ cases := []struct{name, value string}{
+  {"DB_POOL_MAX_CONNS", "1"},
+  {"DB_POOL_MAX_CONNS", "101"},
+  {"DB_POOL_MAX_CONNS", "many"},
+  {"DB_POOL_MIN_CONNS", "3"},
+  {"DB_POOL_MAX_LIFETIME_SECONDS", "30"},
+  {"DB_POOL_MAX_IDLE_SECONDS", "3601"},
+  {"DB_POOL_HEALTH_CHECK_SECONDS", "0"},
+ }
+ for _, tc := range cases {
+  t.Run(tc.name+"_"+tc.value, func(t *testing.T) {
+   requiredEnv(t)
+   t.Setenv(tc.name, tc.value)
+   if _, err := Load(); err == nil { t.Fatalf("invalid %s=%q accepted", tc.name, tc.value) }
+  })
+ }
+}
