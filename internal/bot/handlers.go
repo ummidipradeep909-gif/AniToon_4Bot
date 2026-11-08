@@ -20,10 +20,6 @@ func Start(b *gotgbot.Bot,ctx *ext.Context) error {
  if b.User.FirstName!="" { name=b.User.FirstName }
  text:=fmt.Sprintf("<b>Welcome to %s!</b>\nYour Telegram group-management assistant.\n\nUse /help to see available commands.",name)
  opts:=&gotgbot.SendMessageOpts{ParseMode:"HTML"}
- if b.User.Id==primaryBotID {
-  text+="\n\n<b>Want your own independent AniToon clone?</b>\n1. Tap the button below and create a bot with @BotFather using /newbot.\n2. Return here and send /clone.\n3. Send the API token from BotFather in this private chat.\n4. I will delete your token message, verify it, and start your clone.\n\n<i>Never send your token in a group or share it with anyone.</i>"
-  opts.ReplyMarkup=gotgbot.InlineKeyboardMarkup{InlineKeyboard:[][]gotgbot.InlineKeyboardButton{{{Text:"🤖 Create Your Own Clone Bot",Url:"https://t.me/BotFather"}}}}
- }
  _,err:=ctx.EffectiveMessage.Reply(b,text,opts); return err
 }
 
