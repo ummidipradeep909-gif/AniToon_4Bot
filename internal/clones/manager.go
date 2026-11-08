@@ -59,13 +59,11 @@ func cloneQuotaFromEnv() int {
 func (m *Manager) persistenceReady() bool { return m.store.db != nil && len(m.key) == 32 }
 
 func (m *Manager) Register(d *ext.Dispatcher) {
-	d.AddHandler(handlers.NewCommand("clone", m.Begin))
 	d.AddHandler(handlers.NewCommand("cancel", m.Cancel))
 	d.AddHandler(handlers.NewCommand("clonestatus", m.Status))
 	d.AddHandler(handlers.NewCommand("clonepause", m.Pause))
 	d.AddHandler(handlers.NewCommand("cloneresume", m.Resume))
 	d.AddHandler(handlers.NewCommand("cloneremove", m.Remove))
-	d.AddHandler(handlers.NewMessage(nil, m.ReceiveToken))
 }
 
 func (m *Manager) Begin(b *gotgbot.Bot, c *ext.Context) error {
@@ -377,7 +375,7 @@ func (m *Manager) Remove(b *gotgbot.Bot, c *ext.Context) error {
 	}
 	delete(m.active,botID); delete(m.bots,botID); delete(m.owners,owner); delete(m.health,botID)
 	m.mu.Unlock()
-	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone has been removed and its encrypted credentials deleted. To create another, use /clone.",nil)
+	_,err=b.SendMessage(c.EffectiveChat.Id,"Your clone has been removed and its encrypted credentials deleted.",nil)
 	return err
 }
 
